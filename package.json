@@ -1,0 +1,55 @@
+{
+  "name": "browser-use-relay-mcp",
+  "version": "1.0.0",
+  "description": "MCP server and Manifest V3 extension for observing and controlling Chromium browsers.",
+  "type": "module",
+  "bin": {
+    "browser-use-relay-mcp": "dist/mcp/entry.js"
+  },
+  "files": [
+    "dist",
+    "extension/dist",
+    "scripts"
+  ],
+  "scripts": {
+    "build": "npm run build:server && npm run build:extension",
+    "build:server": "node scripts/clean-server.mjs && tsc -p tsconfig.json",
+    "build:extension": "npm run build:extension:copy && npm run build:extension:code && npm run build:extension:styles",
+    "build:extension:copy": "node scripts/copy-extension-assets.mjs",
+    "build:extension:code": "node scripts/build-extension.mjs",
+    "build:extension:styles": "tailwindcss -i extension/src/ui.css -o extension/dist/ui.css --minify",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p extension/tsconfig.json --noEmit",
+    "prepare": "npm run build",
+    "dev": "tsx watch src/mcp/entry.ts",
+    "dev:native": "tsx watch src/native/entry.ts",
+    "start": "node dist/mcp/entry.js",
+    "start:native": "node dist/native/entry.js",
+    "native:install": "node scripts/install-native-host.mjs",
+    "native:uninstall": "node scripts/uninstall-native-host.mjs"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "@nut-tree-fork/libnut": "4.2.6",
+    "clipboardy": "5.3.2",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "ws": "8.21.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "@types/chrome": "0.2.6",
+    "@types/node": "26.1.1",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.4",
+    "@types/ws": "8.18.1",
+    "esbuild": "0.28.1",
+    "sharp": "0.35.3",
+    "tailwindcss": "4.3.3",
+    "tsx": "4.23.1",
+    "typescript": "7.0.2"
+  }
+}

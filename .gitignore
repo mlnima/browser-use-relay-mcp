@@ -1,0 +1,8 @@
+node_modules/
+dist/
+extension/dist/
+.npm-cache/
+.npm-logs/
+*.log
+.DS_Store
+Thumbs.db

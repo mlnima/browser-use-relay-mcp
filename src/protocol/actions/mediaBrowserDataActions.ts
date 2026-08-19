@@ -1,0 +1,28 @@
+import type { ActionDefinition } from "../actionDefinition.js";
+
+export const mediaBrowserDataActions = [
+  { name: "playMedia", category: "media", engines: ["dom"], readOnly: false, description: "Play audio or video." },
+  { name: "pauseMedia", category: "media", engines: ["dom"], readOnly: false, description: "Pause audio or video." },
+  { name: "seekMedia", category: "media", engines: ["dom"], readOnly: false, description: "Seek audio or video." },
+  { name: "setMediaVolume", category: "media", engines: ["dom"], readOnly: false, description: "Set media volume." },
+  { name: "muteMedia", category: "media", engines: ["dom"], readOnly: false, description: "Mute a media element." },
+  { name: "unmuteMedia", category: "media", engines: ["dom"], readOnly: false, description: "Unmute a media element." },
+  { name: "setPlaybackRate", category: "media", engines: ["dom"], readOnly: false, description: "Set media playback rate." },
+  { name: "setMediaLoop", category: "media", engines: ["dom"], readOnly: false, description: "Set media loop state." },
+  { name: "selectCaptionTrack", category: "media", engines: ["dom"], readOnly: false, description: "Select a media text track." },
+  { name: "requestPictureInPicture", category: "media", engines: ["dom"], readOnly: false, description: "Request picture-in-picture when permitted." },
+  { name: "requestFullscreen", category: "media", engines: ["dom"], readOnly: false, description: "Request element fullscreen when permitted." },
+  { name: "queryHistory", category: "browserData", engines: ["browser"], readOnly: true, description: "Query browsing history." },
+  { name: "deleteHistory", category: "browserData", engines: ["browser"], readOnly: false, description: "Delete matching history." },
+  { name: "listBookmarks", category: "browserData", engines: ["browser"], readOnly: true, description: "List bookmarks." },
+  { name: "createBookmark", category: "browserData", engines: ["browser"], readOnly: false, description: "Create a bookmark." },
+  { name: "updateBookmark", category: "browserData", engines: ["browser"], readOnly: false, description: "Update a bookmark." },
+  { name: "deleteBookmark", category: "browserData", engines: ["browser"], readOnly: false, description: "Delete a bookmark." },
+  { name: "listSessions", category: "browserData", engines: ["browser"], readOnly: true, description: "List recently closed sessions." },
+  { name: "restoreSession", category: "browserData", engines: ["browser"], readOnly: false, description: "Restore a recent session." },
+  { name: "listReadingList", category: "browserData", engines: ["browser"], readOnly: true, description: "List reading-list entries." },
+  { name: "addReadingListEntry", category: "browserData", engines: ["browser"], readOnly: false, description: "Add a reading-list entry." },
+  { name: "updateReadingListEntry", category: "browserData", engines: ["browser"], readOnly: false, description: "Update a reading-list entry." },
+  { name: "removeReadingListEntry", category: "browserData", engines: ["browser"], readOnly: false, description: "Remove a reading-list entry." },
+  { name: "clearBrowsingData", category: "browserData", engines: ["browser"], readOnly: false, description: "Clear selected browsing data." },
+] satisfies readonly ActionDefinition[];

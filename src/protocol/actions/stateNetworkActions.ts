@@ -1,0 +1,36 @@
+import type { ActionDefinition } from "../actionDefinition.js";
+
+const browser = ["browser"] as const;
+
+export const stateNetworkActions = [
+  { name: "listCookies", category: "cookies", engines: browser, readOnly: true, description: "List matching cookies including partition metadata." },
+  { name: "getCookie", category: "cookies", engines: browser, readOnly: true, description: "Read a cookie." },
+  { name: "setCookie", category: "cookies", engines: browser, readOnly: false, description: "Set a cookie." },
+  { name: "deleteCookie", category: "cookies", engines: browser, readOnly: false, description: "Delete a cookie." },
+  { name: "readLocalStorage", category: "storage", engines: ["dom"], readOnly: true, description: "Read page localStorage." },
+  { name: "writeLocalStorage", category: "storage", engines: ["dom"], readOnly: false, description: "Write page localStorage." },
+  { name: "deleteLocalStorage", category: "storage", engines: ["dom"], readOnly: false, description: "Delete page localStorage values." },
+  { name: "readSessionStorage", category: "storage", engines: ["dom"], readOnly: true, description: "Read page sessionStorage." },
+  { name: "writeSessionStorage", category: "storage", engines: ["dom"], readOnly: false, description: "Write page sessionStorage." },
+  { name: "deleteSessionStorage", category: "storage", engines: ["dom"], readOnly: false, description: "Delete page sessionStorage values." },
+  { name: "inspectIndexedDB", category: "storage", engines: ["browser"], readOnly: false, description: "Inspect IndexedDB metadata and rows; opening a concurrently removed database can recreate it." },
+  { name: "readIndexedDB", category: "storage", engines: ["dom"], readOnly: true, description: "Read IndexedDB records." },
+  { name: "writeIndexedDB", category: "storage", engines: ["dom"], readOnly: false, description: "Write an IndexedDB record." },
+  { name: "deleteIndexedDB", category: "storage", engines: ["dom"], readOnly: false, description: "Delete IndexedDB records." },
+  { name: "inspectCacheStorage", category: "storage", engines: ["dom"], readOnly: false, description: "Inspect Cache Storage entries; opening a concurrently removed cache can recreate it." },
+  { name: "readCacheStorage", category: "storage", engines: ["dom"], readOnly: true, description: "Read a cached response." },
+  { name: "writeCacheStorage", category: "storage", engines: ["dom"], readOnly: false, description: "Write a cached response." },
+  { name: "deleteCacheStorage", category: "storage", engines: ["dom"], readOnly: false, description: "Delete a cached response or cache." },
+  { name: "readExtensionStorage", category: "storage", engines: browser, readOnly: true, description: "Read extension storage." },
+  { name: "writeExtensionStorage", category: "storage", engines: browser, readOnly: false, description: "Write extension storage." },
+  { name: "clearSiteData", category: "storage", engines: browser, readOnly: false, description: "Clear selected site data." },
+  { name: "enableResponseBodyCapture", category: "network", engines: browser, readOnly: false, description: "Attach CDP Network to the target tab so future completed responses can expose bodies." },
+  { name: "listRequests", category: "network", engines: browser, readOnly: true, description: "List buffered source-tagged request metadata without changing debugger state." },
+  { name: "getRequest", category: "network", engines: browser, readOnly: true, description: "Inspect request metadata." },
+  { name: "getResponseBody", category: "network", engines: browser, readOnly: true, description: "Read a completed source=cdp response body captured after CDP Network was enabled." },
+  { name: "setNetworkRules", category: "network", engines: browser, readOnly: false, description: "Set declarative block, redirect, or header rules." },
+  { name: "clearNetworkRules", category: "network", engines: browser, readOnly: false, description: "Remove dynamic network rules." },
+  { name: "fetch", category: "network", engines: browser, readOnly: false, description: "Perform an extension-side fetch." },
+  { name: "getPageState", category: "page", engines: ["dom"], readOnly: true, description: "Read URL, title, dimensions, focus, selection, language, and readiness." },
+  { name: "observePage", category: "page", engines: ["dom"], readOnly: true, description: "Read mutation, resize, visibility, error, URL, and frame events observed by the content engine." },
+] satisfies readonly ActionDefinition[];

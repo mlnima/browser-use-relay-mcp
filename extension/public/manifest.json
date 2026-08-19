@@ -1,0 +1,90 @@
+{
+  "manifest_version": 3,
+  "name": "Browser Use Relay",
+  "version": "1.0.0",
+  "description": "Observe and control browser pages through a local or network relay.",
+  "minimum_chrome_version": "130",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAq5g33C9uRx0MvJG0Z08SKcU0PADK2a37iIqMCSe0bHEx3llLv7r/i8npas5I1dyrkrppkD6DF7yMLrMwKl1hSkQyJpXKwSAa0hj2d8fNzbu6Gyf+mw+l4Q2KKUhiwr8UWPlejOyZf/11UPR1jVI4JiWJz1CAXet7KvIwIHsRB7C3g8X4t51PbkOqn6GPxmrfm557VdghPRg4cxeqGo/YrdR3GANkKlV6UHEgbgBinNLQ7QeaWxj7sgHLulm+HGwCM9fz5e6RWZYXv11Y3aXO7Fe0pbW9T7UzHBLSAemVEW1qToV7+gvePouMVlSmcsU5v4k5uV5omnPnCOXKWziVqwIDAQAB",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Browser Use Relay",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true,
+      "world": "ISOLATED"
+    }
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "permissions": [
+    "activeTab",
+    "alarms",
+    "bookmarks",
+    "browsingData",
+    "clipboardRead",
+    "clipboardWrite",
+    "contentSettings",
+    "contextMenus",
+    "cookies",
+    "debugger",
+    "declarativeContent",
+    "declarativeNetRequest",
+    "declarativeNetRequestFeedback",
+    "declarativeNetRequestWithHostAccess",
+    "desktopCapture",
+    "downloads",
+    "downloads.open",
+    "downloads.ui",
+    "favicon",
+    "geolocation",
+    "history",
+    "idle",
+    "nativeMessaging",
+    "notifications",
+    "offscreen",
+    "pageCapture",
+    "privacy",
+    "readingList",
+    "scripting",
+    "sessions",
+    "storage",
+    "system.display",
+    "tabCapture",
+    "tabGroups",
+    "tabs",
+    "topSites",
+    "unlimitedStorage",
+    "userScripts",
+    "webNavigation",
+    "webRequest"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "incognito": "split",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self'"
+  }
+}

@@ -18,7 +18,7 @@ export const createForwardedActions = (
     sendRelayMessage(action.socket, { type: "result", result: { ...result, id: action.request.id } });
     return true;
   };
-  const cancel = (id: string, reason: string, socket?: WebSocket) => {
+  const cancel = (id: string, reason: string, socket: WebSocket) => {
     const current = registry.takePublic(id, socket);
     if (!current) return false;
     const { extensionId, action } = current;
@@ -60,11 +60,11 @@ export const createForwardedActions = (
   const cancelSocket = (socket: WebSocket, reason: string) => registry.publicIdsFor(socket)
     .flatMap((id) => cancel(id, reason, socket) || []);
   const close = (reason: string) => {
-    for (const id of registry.activePublicIds()) cancel(id, reason);
+    for (const action of registry.activePublicActions()) cancel(action.id, reason, action.socket);
   };
   return {
     forward, complete, cancel, cancelSocket, close,
-    has: registry.has, count: registry.count, countOwner: registry.countOwner,
+    has: registry.has,
     ownerForExtensionAction: registry.ownerForExtensionAction,
     isForwardedExtensionAction: registry.isForwardedExtensionAction,
   };

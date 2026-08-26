@@ -1,5 +1,5 @@
 import type { ViewportPoint } from "./resolve-point.js";
-import { sendDebuggerCommand } from "./debugger-session.js";
+import { detachDebugger, sendDebuggerCommand } from "./debugger-session.js";
 
 const positions = new Map<number, ViewportPoint>();
 const buttons = new Map<number, string[]>();
@@ -51,10 +51,37 @@ export const pressMouseButton = async (tabId: number, point: ViewportPoint, butt
     throw error;
   }
 };
-export const releaseHeldMouseButton = async (tabId: number, point: ViewportPoint, button: string, clickCount: number, modifiers: number) => {
-  const dispatch = () => sendDebuggerCommand(tabId, "Input.dispatchMouseEvent", {
+const dispatchMouseRelease = (tabId: number, params: Record<string, unknown>, signal?: AbortSignal) => new Promise<void>((resolve, reject) => {
+  let settled = false;
+  let navigationStarted = false;
+  const clean = () => {
+    chrome.webNavigation.onBeforeNavigate.removeListener(navigated);
+    signal?.removeEventListener("abort", aborted);
+  };
+  const finish = (callback: () => void) => {
+    if (settled) return;
+    settled = true;
+    clean();
+    callback();
+  };
+  const navigated = (details: chrome.webNavigation.WebNavigationBaseCallbackDetails) => {
+    if (details.tabId !== tabId || details.frameId !== 0 || settled || navigationStarted) return;
+    navigationStarted = true;
+    void detachDebugger(tabId).then(() => finish(resolve), () => finish(resolve));
+  };
+  const aborted = () => finish(() => reject(signal?.reason instanceof Error ? signal.reason : new Error("Input action cancelled.")));
+  chrome.webNavigation.onBeforeNavigate.addListener(navigated);
+  signal?.addEventListener("abort", aborted, { once: true });
+  if (signal?.aborted) return aborted();
+  void sendDebuggerCommand(tabId, "Input.dispatchMouseEvent", params).then(
+    () => navigationStarted || finish(resolve),
+    (error) => navigationStarted || finish(() => reject(error)),
+  );
+});
+export const releaseHeldMouseButton = async (tabId: number, point: ViewportPoint, button: string, clickCount: number, modifiers: number, signal?: AbortSignal) => {
+  const dispatch = () => dispatchMouseRelease(tabId, {
     type: "mouseReleased", ...point, button, buttons: heldMouseButtonMask(tabId) & ~mouseButtonMask(button), clickCount, modifiers,
-  });
+  }, signal);
   try { await dispatch(); }
   catch (error) {
     const released = await dispatch().then(() => true, () => false);

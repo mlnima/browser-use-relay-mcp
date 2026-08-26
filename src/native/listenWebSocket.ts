@@ -3,7 +3,7 @@ import type { AddressInfo } from "node:net";
 import { WebSocketServer } from "ws";
 import type WebSocket from "ws";
 import {
-  MAX_RELAY_TCP_CONNECTIONS, MAX_WS_INBOUND_MESSAGE_BYTES, RELAY_HANDSHAKE_TIMEOUT_MS,
+  MAX_WS_INBOUND_MESSAGE_BYTES, RELAY_HANDSHAKE_TIMEOUT_MS,
 } from "./constants.js";
 
 const listen = (
@@ -15,7 +15,6 @@ const listen = (
     response.writeHead(426, { Connection: "close" });
     response.end();
   });
-  httpServer.maxConnections = MAX_RELAY_TCP_CONNECTIONS;
   httpServer.headersTimeout = RELAY_HANDSHAKE_TIMEOUT_MS;
   httpServer.requestTimeout = RELAY_HANDSHAKE_TIMEOUT_MS;
   httpServer.setTimeout(RELAY_HANDSHAKE_TIMEOUT_MS, (socket) => socket.destroy());
@@ -39,7 +38,7 @@ const listen = (
     server.removeListener("error", fail);
     resolve({ server, httpServer, port: (httpServer.address() as AddressInfo).port });
   });
-  httpServer.listen({ port, host, backlog: MAX_RELAY_TCP_CONNECTIONS });
+  httpServer.listen({ port, host });
 });
 
 export const listenWebSocket = async (

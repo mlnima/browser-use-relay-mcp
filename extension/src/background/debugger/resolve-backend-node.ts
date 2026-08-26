@@ -7,10 +7,11 @@ import { sendDebuggerCommand } from "./debugger-session";
 
 type RemoteObject = { objectId?: string; value?: unknown };
 type EvaluateResult = { result: RemoteObject; exceptionDetails?: unknown };
+type ResolvedNode = { object?: RemoteObject };
 type NodeDescription = { backendNodeId: number; nodeName: string; attributes?: string[] };
 type DescribedNode = { node: NodeDescription };
 type LocatedNode = { backendNodeId: number };
-export type FileInputTarget = { backendNodeId: number; enabled: boolean; multiple: boolean; directory: boolean; fileCount: number };
+export type FileInputTarget = { backendNodeId: number; enabled: boolean; multiple: boolean; directory: boolean; fileCount: number; fileBytes: number };
 
 const pathExpression = (path: ElementPathStep[]) => `(()=>{const path=${JSON.stringify(path)};let node;for(const step of path){if(step.scope==="document")node=document.children[step.index];else if(step.scope==="children")node=node?.children[step.index];else node=node?.shadowRoot?.children[step.index];if(!node)return null;}return node;})()`;
 
@@ -42,15 +43,19 @@ const nodeFromPoint = async (request: ActionRequest, tabId: number, signal?: Abo
   })).node;
 };
 export const inspectFileInputTarget = async (tabId: number, backendNodeId: number) => {
-  const resolved = await sendDebuggerCommand<EvaluateResult>(tabId, "DOM.resolveNode", { backendNodeId }); const objectId = resolved.result.objectId;
+  const resolved = await sendDebuggerCommand<ResolvedNode>(tabId, "DOM.resolveNode", { backendNodeId });
+  const objectId = resolved.object?.objectId;
   if (!objectId) throw new Error("Unable to inspect the resolved file input target.");
   try {
     const inspected = await sendDebuggerCommand<EvaluateResult>(tabId, "Runtime.callFunctionOn", {
       objectId, arguments: [{ objectId }], returnByValue: true,
-      functionDeclaration: `(element) => { let current = element; while (current) { if (current.matches?.('[inert],[aria-disabled="true"]')) return { enabled: false, multiple: element.multiple, directory: element.webkitdirectory, fileCount: element.files?.length || 0 }; current = current.parentElement || current.getRootNode?.().host; } return { enabled: !element.matches(':disabled'), multiple: element.multiple, directory: element.webkitdirectory, fileCount: element.files?.length || 0 }; }`,
+      functionDeclaration: `(element) => { let current = element; let enabled = true; while (current) { if (current.matches?.('[inert],[aria-disabled="true"]')) { enabled = false; break; } current = current.parentElement || current.getRootNode?.().host; } const files = Array.from(element.files || []); return { enabled: enabled && !element.matches(':disabled'), multiple: element.multiple, directory: element.webkitdirectory, fileCount: files.length, fileBytes: files.reduce((total, file) => total + file.size, 0) }; }`,
     });
     const value = inspected.result.value as Omit<FileInputTarget, "backendNodeId"> | undefined;
-    if (inspected.exceptionDetails || !value || typeof value.enabled !== "boolean" || typeof value.multiple !== "boolean" || typeof value.directory !== "boolean" || typeof value.fileCount !== "number") throw new Error("Unable to inspect the resolved file input state.");
+    if (inspected.exceptionDetails || !value || typeof value.enabled !== "boolean" || typeof value.multiple !== "boolean" ||
+      typeof value.directory !== "boolean" || !Number.isSafeInteger(value.fileCount) || value.fileCount < 0 ||
+      !Number.isSafeInteger(value.fileBytes) || value.fileBytes < 0)
+      throw new Error("Unable to inspect the resolved file input state.");
     return { backendNodeId, ...value };
   } finally {
     await sendDebuggerCommand(tabId, "Runtime.releaseObject", { objectId }).catch(() => undefined);

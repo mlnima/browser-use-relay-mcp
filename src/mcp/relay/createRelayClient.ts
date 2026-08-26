@@ -49,7 +49,7 @@ export const createRelayClient = (url: string, connectTimeoutMs: number, actionT
         });
       } catch (error) {
         const relayCode = relayHandshakeCode(error); signal.throwIfAborted();
-        if (relayCode && relayCode !== "RELAY_BUSY") throw error;
+        if (relayCode) throw error;
         const retryWindowMs = Math.floor(deadline - performance.now());
         if (retryWindowMs <= 0) throw error;
         await retryDelay(Math.min(backoffMs, retryWindowMs), signal);

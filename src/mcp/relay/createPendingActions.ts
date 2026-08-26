@@ -26,7 +26,7 @@ export const createPendingActions = () => {
   const rejectSocket = (socket: WebSocket, message: string) => {
     for (const [id, item] of [...items]) if (item.socket === socket) take(id)?.reject(new Error(message));
   };
-  return { add: (id: string, item: PendingAction) => items.set(id, item), count: () => items.size, has: (id: string) => items.has(id), take, rejectAll, rejectSocket };
+  return { add: (id: string, item: PendingAction) => items.set(id, item), has: (id: string) => items.has(id), take, rejectAll, rejectSocket };
 };
 
 export type PendingActions = ReturnType<typeof createPendingActions>;

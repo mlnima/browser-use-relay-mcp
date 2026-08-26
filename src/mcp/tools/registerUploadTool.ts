@@ -72,7 +72,11 @@ export const registerUploadTool = (server: McpServer, client: RelayClient) => se
       const directoryRoots = finalizedRoots.slice(0, new Set(directoryGroupIds).size);
       const standalonePaths = transferred.flatMap((file, index) => sources[index].directorySource ? [] : [file.path]);
       const remotePaths = [...directoryRoots, ...standalonePaths];
-      const result = await client.execute(createActionRequest({ action: "setInputFiles", engine: "browser", target, params: { files: remotePaths }, timeoutMs }), signal);
+      const expectedTotalBytes = sources.reduce((total, source) => total + source.size, 0);
+      const result = await client.execute(createActionRequest({
+        action: "setInputFiles", engine: "browser", target,
+        params: { files: remotePaths, expectedFileCount: sources.length, expectedTotalBytes }, timeoutMs,
+      }), signal);
       if (!result.success) throw new Error(result.error?.message || "The browser rejected the transferred files.");
       return resultContent(buildUploadResult(sources, transferred, directoryRoots, result));
     } catch (error) {

@@ -73,7 +73,7 @@ export const executeMouseInput = async (request: ActionRequest, tabId: number, s
     return point;
   }
   if (["mouseDown", "clickAndHold"].includes(request.action)) return (await pressMouseButton(tabId, point, button, count, modifiers, signal), point);
-  if (["mouseUp", "release", "dragEnd"].includes(request.action)) return (await releaseHeldMouseButton(tabId, point, button, count, modifiers), point);
+  if (["mouseUp", "release", "dragEnd"].includes(request.action)) return (await releaseHeldMouseButton(tabId, point, button, count, modifiers, signal), point);
   if (dragging) {
     const destinationTarget = request.params?.destination && typeof request.params.destination === "object" && !Array.isArray(request.params.destination) ? request.params.destination as unknown as ActionTarget : undefined;
     const routing = destinationTarget?.frameId === undefined && destinationTarget?.documentId === undefined ? { frameId: request.target?.frameId, documentId: request.target?.documentId } : {};
@@ -84,7 +84,7 @@ export const executeMouseInput = async (request: ActionRequest, tabId: number, s
     try {
       await move(tabId, destination, dragDuration, modifiers, signal);
     } finally {
-      await releaseHeldMouseButton(tabId, mousePosition(tabId) || point, button, 1, modifiers);
+      await releaseHeldMouseButton(tabId, mousePosition(tabId) || point, button, 1, modifiers, signal);
     }
     return destination;
   }
@@ -93,7 +93,7 @@ export const executeMouseInput = async (request: ActionRequest, tabId: number, s
     try {
       if (holdDuration > 0) await abortableDelay(holdDuration, signal);
     } finally {
-      await releaseHeldMouseButton(tabId, point, button, click, modifiers);
+      await releaseHeldMouseButton(tabId, point, button, click, modifiers, signal);
     }
     if (click < count) await abortableDelay(clickInterval, signal);
   }

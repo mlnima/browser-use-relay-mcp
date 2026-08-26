@@ -9,6 +9,10 @@ import { collectBoundedElementText } from "./text.js";
 
 type Stats = { omittedAttributes: number; omittedSelectedValues: number };
 type LimitString = ReturnType<typeof createSnapshotStringLimiter>["limit"];
+const structuralTextTags = new Set([
+  "HTML", "BODY", "DIV", "MAIN", "SECTION", "ARTICLE", "ASIDE", "HEADER", "FOOTER", "NAV", "FORM",
+  "TABLE", "THEAD", "TBODY", "TFOOT", "TR", "UL", "OL", "DL", "FIELDSET",
+]);
 
 const getAttributes = (element: Element, limit: LimitString, stats: Stats): Record<string, string> | undefined => {
   const attributes = Object.create(null) as Record<string, string>;
@@ -64,7 +68,7 @@ export const createCatalogElement = (element: Element, visible = isElementVisibl
     tag: limiter.limit(element.localName)!,
     role: limiter.limit(role),
     name: limiter.limit(name),
-    text: limiter.limit(text),
+    text: limiter.limit(structuralTextTags.has(element.tagName) ? undefined : text),
     value: limiter.limit(value),
     href: limiter.limit(getHref(element)),
     placeholder: limiter.limit(getPlaceholder(element)),

@@ -4,7 +4,7 @@ import type { RelayMessage } from "../types/relay.js";
 import { listenWebSocket } from "./listenWebSocket.js";
 import { handleRelayMessage } from "./relayMessage.js";
 import { broadcastRelayMessage } from "./relaySend.js";
-import { MAX_PENDING_RELAY_HANDSHAKES, RELAY_HANDSHAKE_TIMEOUT_MS } from "./constants.js";
+import { RELAY_HANDSHAKE_TIMEOUT_MS } from "./constants.js";
 import { startRelayHeartbeat } from "./relayHeartbeat.js";
 
 type TransportHandlers = {
@@ -21,19 +21,12 @@ export const createRelayTransport = (handlers: TransportHandlers) => {
   const authenticated = new Set<WebSocket>();
   const pending = new Set<WebSocket>();
   const disconnects = new Set<Promise<void>>();
-  let cleanupFailure: string | undefined;
-  const failCleanup = (error: unknown) => {
-    cleanupFailure = `Native input cleanup failed: ${error instanceof Error ? error.message : String(error)}`.slice(0, 4_096);
-    handlers.error(cleanupFailure, true);
-    const current = listener; listener = undefined; admitting = false;
-    current?.server.clients.forEach((socket) => socket.terminate());
-    current?.server.close();
-    current?.httpServer.closeAllConnections();
-    current?.httpServer.close();
-  };
+  const reportCleanupFailure = (error: unknown) => handlers.error(
+    `Native input cleanup failed: ${error instanceof Error ? error.message : String(error)}`.slice(0, 4_096),
+  );
 
   const connect = (socket: WebSocket) => {
-    if (!admitting || pending.size >= MAX_PENDING_RELAY_HANDSHAKES) {
+    if (!admitting) {
       socket.terminate();
       return;
     }
@@ -46,12 +39,12 @@ export const createRelayTransport = (handlers: TransportHandlers) => {
       cancel: handlers.cancel,
       ready: () => {
         pending.delete(socket);
-        if (!admitting || authenticated.size || disconnects.size || cleanupFailure) return false;
+        if (!admitting) return "The relay is stopping.";
         clearTimeout(handshakeTimer);
         authenticated.add(socket);
         stopHeartbeat = startRelayHeartbeat(socket);
         handlers.clients(authenticated.size);
-        return true;
+        return undefined;
       },
     }));
     socket.once("close", () => {
@@ -65,13 +58,12 @@ export const createRelayTransport = (handlers: TransportHandlers) => {
       const task = Promise.resolve().then(() => handlers.disconnect(socket, remaining));
       disconnects.add(task);
       const remove = () => disconnects.delete(task);
-      void task.then(remove, (error) => { remove(); failCleanup(error); });
+      void task.then(remove, (error) => { remove(); reportCleanupFailure(error); });
     });
     socket.on("error", () => socket.terminate());
   };
 
   const start = async (host: string, port: number) => {
-    if (cleanupFailure) throw new Error(cleanupFailure);
     listener = await listenWebSocket(host, port, connect);
     admitting = true;
     listener.server.on("error", (error) => handlers.error(error.message));

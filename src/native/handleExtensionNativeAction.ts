@@ -3,7 +3,6 @@ import type { ActionRequest } from "../types/action.js";
 import type { NativeMessage } from "../types/relay.js";
 import { getActionDefinition } from "../protocol/actionCatalog.js";
 import { failedActionResult } from "./actionResult.js";
-import { MAX_ACTIVE_ACTIONS, MAX_ACTIVE_ACTIONS_PER_OWNER } from "./constants.js";
 import type { createForwardedActions } from "./createForwardedActions.js";
 import type { createNativeRunner } from "./createNativeRunner.js";
 import { canExecuteNativeAction } from "./executeNativeAction.js";
@@ -26,18 +25,13 @@ export const handleExtensionNativeAction = (
     return;
   }
   const owner = forwardedOwner || extensionOwner;
-  if (runner.has(request.id)) {
+  if (runner.has(request.id, owner)) {
     reply(failedActionResult(request, "DUPLICATE_ACTION_ID", `Action id "${request.id}" is already active.`));
     return;
   }
   const definition = getActionDefinition(request.action);
   if (!definition?.engines.some((engine) => engine === "native") || !canExecuteNativeAction(request)) {
     reply(failedActionResult(request, "NATIVE_ACTION_UNAVAILABLE", `Native action "${request.action}" is not available on this host.`));
-    return;
-  }
-  if (runner.count() + forwarded.count() >= MAX_ACTIVE_ACTIONS ||
-    runner.countOwner(owner) + forwarded.countOwner(owner) >= MAX_ACTIVE_ACTIONS_PER_OWNER) {
-    reply(failedActionResult(request, "ACTION_QUEUE_BUSY", "The native relay action queue is at capacity.", 0, true));
     return;
   }
   runner.execute({ ...request, engine: "native" }, owner, reply);

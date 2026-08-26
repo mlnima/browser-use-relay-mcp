@@ -1,6 +1,6 @@
 import WebSocket from "ws";
 import { getActionDefinition } from "../../protocol/actionCatalog.js";
-import { MAX_CANCEL_REASON_LENGTH, MAX_RELAY_CLIENT_BUFFER_BYTES, MAX_RELAY_PENDING_ACTIONS, MAX_RELAY_REQUEST_BYTES } from "../../protocol/limits.js";
+import { MAX_CANCEL_REASON_LENGTH, MAX_RELAY_CLIENT_BUFFER_BYTES, MAX_RELAY_REQUEST_BYTES } from "../../protocol/limits.js";
 import type { ActionRequest, ActionResult } from "../../types/action.js";
 import { jsonValueFitsLimits } from "../jsonValueLimits.js";
 import type { PendingActions } from "./createPendingActions.js";
@@ -21,7 +21,6 @@ const cancel = (socket: WebSocket, id: string, reason: string) => {
 };
 
 export const executeRelayAction = (socket: WebSocket, pending: PendingActions, request: ActionRequest, actionTimeoutMs: number, signal?: AbortSignal): Promise<ActionResult> => {
-  if (pending.count() >= MAX_RELAY_PENDING_ACTIONS) return Promise.resolve(failed(request, "MCP_ACTION_QUEUE_BUSY", "The MCP relay action queue is at capacity.", true));
   if (pending.has(request.id)) return Promise.reject(new Error(`Relay action ID is already pending: ${request.id}`));
   if (request.params && !jsonValueFitsLimits(request.params)) return Promise.resolve(failed(request, "MCP_REQUEST_STRUCTURE_TOO_LARGE", "The action parameters exceeded the JSON structure limit.", false));
   const relayRequest = { ...request, timeoutMs: request.timeoutMs ?? actionTimeoutMs };

@@ -43,13 +43,23 @@ export const executeCdpPageAction = async (request: ActionRequest, tabId: number
       throw new Error("setInputFiles requires a non-empty params.files array of absolute browser-device paths.");
     }
     const files = request.action === "clearFiles" ? [] : supplied as string[];
+    const expectedFileCount = request.params?.expectedFileCount;
+    const expectedTotalBytes = request.params?.expectedTotalBytes;
+    if (expectedFileCount !== undefined && (!Number.isSafeInteger(expectedFileCount) || Number(expectedFileCount) < 1))
+      throw new Error("expectedFileCount must be a positive safe integer.");
+    if (expectedTotalBytes !== undefined && (!Number.isSafeInteger(expectedTotalBytes) || Number(expectedTotalBytes) < 0))
+      throw new Error("expectedTotalBytes must be a nonnegative safe integer.");
     const target = await resolveFileInputBackendNode(request, tabId, signal);
     if (!target.enabled) throw new Error("The target file input is disabled.");
     if (!target.multiple && files.length > 1) throw new Error("The target file input does not accept multiple files.");
     await sendDebuggerCommand(tabId, "DOM.setFileInputFiles", { files, backendNodeId: target.backendNodeId });
     const observed = await inspectFileInputTarget(tabId, target.backendNodeId);
-    if (observed.fileCount !== files.length && (!target.directory || observed.fileCount === 0)) throw new Error("The target file input did not retain the requested file count.");
-    return { files: observed.fileCount };
+    const expectedCount = typeof expectedFileCount === "number" ? expectedFileCount : files.length;
+    if (observed.fileCount !== expectedCount && (typeof expectedFileCount === "number" || !target.directory || observed.fileCount === 0))
+      throw new Error("The target file input did not retain the requested file count.");
+    if (typeof expectedTotalBytes === "number" && observed.fileBytes !== expectedTotalBytes)
+      throw new Error("The target file input did not retain the requested total file size.");
+    return { files: observed.fileCount, bytes: observed.fileBytes };
   }
   if (request.action === "captureFullPage") return captureFullPage(request, tabId, signal);
   if (request.action === "captureElement") return capturePageElement(request, tabId, signal);

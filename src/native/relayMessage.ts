@@ -10,7 +10,7 @@ type Session = { ready: boolean };
 type RelayHandlers = {
   action: (socket: WebSocket, request: ActionRequest) => void;
   cancel: (socket: WebSocket, id: string, reason?: string) => void;
-  ready: () => boolean;
+  ready: () => string | undefined;
 };
 
 const relayError = (socket: WebSocket, code: string, message: string) =>
@@ -54,9 +54,10 @@ export const handleRelayMessage = (
       socket.close(1002, "Protocol mismatch.");
       return;
     }
-    if (!handlers.ready()) {
-      relayError(socket, "RELAY_BUSY", "The relay already has an authenticated MCP client.");
-      socket.close(1008, "The relay is in use.");
+    const unavailable = handlers.ready();
+    if (unavailable) {
+      relayError(socket, "RELAY_UNAVAILABLE", unavailable);
+      socket.close(1013, "Relay unavailable.");
       return;
     }
     session.ready = true;

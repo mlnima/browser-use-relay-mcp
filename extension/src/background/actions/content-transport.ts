@@ -5,7 +5,7 @@ import { injectContentScript } from "./content-injection";
 
 const optionsFor = (request: ActionRequest): chrome.tabs.MessageSendOptions => request.target?.documentId
   ? { documentId: request.target.documentId }
-  : request.target?.frameId === undefined ? {} : { frameId: request.target.frameId };
+  : { frameId: request.target?.frameId ?? 0 };
 
 const sendAction = (tabId: number, request: ActionRequest, options: chrome.tabs.MessageSendOptions) =>
   chrome.tabs.sendMessage(tabId, { type: contentMessage.action, request }, options) as Promise<ActionResult>;

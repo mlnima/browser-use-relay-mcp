@@ -4,6 +4,9 @@ import type { RelayClient } from "../../types/mcp.js";
 import { createActionRequest } from "../createActionRequest.js";
 import { actionResultContent } from "../result.js";
 import { actionInputSchema } from "../schema.js";
+import { imageActionResultContent, snapshotResultContent } from "../snapshotResult.js";
+
+const imageActions = new Set(["captureVisibleTab", "captureViewport", "captureElement"]);
 
 export const registerActionTool = (server: McpServer, client: RelayClient) => server.registerTool(
   "browser_action",
@@ -18,6 +21,8 @@ export const registerActionTool = (server: McpServer, client: RelayClient) => se
     if (!definition) throw new Error(`Unknown browser action: ${input.action}`);
     if (input.engine && input.engine !== "auto" && !definition.engines.some((engine) => engine === input.engine))
       throw new Error(`Action ${input.action} does not support the ${input.engine} engine.`);
-    return actionResultContent(await client.execute(createActionRequest(input), context.mcpReq.signal));
+    const result = await client.execute(createActionRequest(input), context.mcpReq.signal);
+    return input.action === "snapshot" ? snapshotResultContent(result)
+      : imageActions.has(input.action) ? imageActionResultContent(result) : actionResultContent(result);
   },
 );

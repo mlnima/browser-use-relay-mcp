@@ -2,6 +2,7 @@ import { isElementVisible } from "../catalog/element-state.js";
 import { elementFromPointOpen, getComposedParent } from "../catalog/element-tree.js";
 import { requireElement } from "./element.js";
 import { trackObservedElements } from "../observation/element-observers.js";
+import { createFingerprint } from "../catalog/fingerprint.js";
 
 type ActionableBounds = {
   x: number;
@@ -12,21 +13,34 @@ type ActionableBounds = {
   hitY: number;
   path: ElementPathStep[];
 };
+type ResolveTarget = () => Element | undefined;
+type StableHit = { element: Element; bounds: DOMRect; hit?: { x: number; y: number } };
 
 export type ElementPathStep = {
   scope: "document" | "children" | "shadow";
   index: number;
 };
 
-const nextPaint = () => new Promise<void>((resolve) => {
+const nextPaint = (signal: AbortSignal) => new Promise<void>((resolve, reject) => {
   let settled = false;
-  const finish = () => {
+  let frame = 0;
+  let timer = 0;
+  const finish = (callback: () => void) => {
     if (settled) return;
     settled = true;
-    resolve();
+    cancelAnimationFrame(frame);
+    clearTimeout(timer);
+    signal.removeEventListener("abort", abort);
+    callback();
   };
-  requestAnimationFrame(finish);
-  window.setTimeout(finish, 50);
+  const abort = () => finish(() => reject(signal.reason instanceof Error ? signal.reason : new Error("Action cancelled.")));
+  if (signal.aborted) {
+    abort();
+    return;
+  }
+  signal.addEventListener("abort", abort, { once: true });
+  frame = requestAnimationFrame(() => finish(resolve));
+  timer = window.setTimeout(() => finish(resolve), 50);
 });
 
 const containsComposed = (element: Element, candidate?: Element): boolean => {
@@ -51,6 +65,34 @@ const pointsFor = (bounds: DOMRect): { x: number; y: number }[] => {
 
 const findHit = (element: Element, bounds: DOMRect) => pointsFor(bounds)
   .find((point) => containsComposed(element, elementFromPointOpen(point.x, point.y)));
+const identityFor = (element: Element) => {
+  const { tag, role, name, text, attributes } = createFingerprint(element);
+  return JSON.stringify({ tag, role, name, text, attributes });
+};
+
+const stableHitAfterScroll = async (initial: Element, identity: string, resolveTarget: ResolveTarget, signal: AbortSignal): Promise<StableHit> => {
+  let element = initial;
+  let previous = "";
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await nextPaint(signal);
+    const replacement = element.isConnected ? element : resolveTarget();
+    if (!replacement) throw new Error("The target element became stale while scrolling into view.");
+    if (identityFor(replacement) !== identity) throw new Error("The target element became stale while scrolling into view.");
+    if (replacement !== element) {
+      element = replacement;
+      element.scrollIntoView({ behavior: "instant", block: "nearest", inline: "nearest" });
+      previous = "";
+    }
+    const bounds = element.getBoundingClientRect();
+    const hit = findHit(element, bounds);
+    const key = [bounds.x, bounds.y, bounds.width, bounds.height, hit?.x, hit?.y]
+      .map((value) => Math.round(Number(value) * 100) / 100).join(":");
+    const latest = { element, bounds, hit };
+    if (key === previous) return latest;
+    previous = key;
+  }
+  throw new Error("The target element timed out before its position stabilized.");
+};
 
 export const getElementPath = (element: Element): ElementPathStep[] => {
   const path: ElementPathStep[] = [];
@@ -73,25 +115,30 @@ export const getElementPath = (element: Element): ElementPathStep[] => {
   return path;
 };
 
-export const getActionableBounds = async (target?: Element): Promise<ActionableBounds> => {
-  const element = requireElement(target);
+const resolveActionable = async (target: Element | undefined, resolveTarget: ResolveTarget, signal: AbortSignal): Promise<StableHit> => {
+  let element = requireElement(target);
   if (!isElementVisible(element)) throw new Error("The target element is hidden or has no rendered box.");
-  let bounds = element.getBoundingClientRect();
-  let hit = findHit(element, bounds);
-  if (!hit) {
-    element.scrollIntoView({ behavior: "auto", block: "center", inline: "center" });
-    await nextPaint();
-    bounds = element.getBoundingClientRect();
-    hit = findHit(element, bounds);
+  const identity = identityFor(element);
+  element.scrollIntoView({ behavior: "instant", block: "nearest", inline: "nearest" });
+  let settled = await stableHitAfterScroll(element, identity, resolveTarget, signal);
+  if (!settled.hit) {
+    settled.element.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
+    settled = await stableHitAfterScroll(settled.element, identity, resolveTarget, signal);
   }
-  if (bounds.width <= 0 || bounds.height <= 0) throw new Error("The target element has a zero-size rendered box.");
-  if (!hit) throw new Error("The target element is outside the viewport or covered at every tested point.");
-  trackObservedElements([element]);
+  if (!isElementVisible(settled.element)) throw new Error("The target element is hidden or has no rendered box.");
+  if (settled.bounds.width <= 0 || settled.bounds.height <= 0) throw new Error("The target element has a zero-size rendered box.");
+  if (!settled.hit) throw new Error("The target element is outside the viewport or covered at every tested point.");
+  trackObservedElements([settled.element]);
+  return settled;
+};
+
+export const getActionableBounds = async (target: Element | undefined, resolveTarget: ResolveTarget, signal: AbortSignal): Promise<ActionableBounds> => {
+  const { element, bounds, hit } = await resolveActionable(target, resolveTarget, signal);
+  if (!hit) {
+    throw new Error("The target element is outside the viewport or covered at every tested point.");
+  }
   return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height, hitX: hit.x, hitY: hit.y, path: getElementPath(element) };
 };
 
-export const requireActionableElement = async (target?: Element): Promise<Element> => {
-  const element = requireElement(target);
-  await getActionableBounds(element);
-  return element;
-};
+export const requireActionableElement = async (target: Element | undefined, resolveTarget: ResolveTarget, signal: AbortSignal): Promise<Element> =>
+  (await resolveActionable(target, resolveTarget, signal)).element;

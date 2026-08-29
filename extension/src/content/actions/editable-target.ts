@@ -55,7 +55,7 @@ export const replaceControlText = (
   const range = { start: clampOffset(Math.min(start, end), element.value.length), end: clampOffset(Math.max(start, end), element.value.length) };
   if (jsonStringPartsBytesWithin([element.value.slice(0, range.start), value, element.value.slice(range.end)], MAX_CONTENT_VALUE_BYTES) === undefined) throw Object.assign(new Error("The requested editable value exceeds the encoded scalar limit."), { contentCode: "CONTENT_RESULT_TOO_LARGE" });
   const expected = `${element.value.slice(0, range.start)}${value}${element.value.slice(range.end)}`;
-  element.focus(); setControlSelection(element, range.start, range.end);
+  element.focus({ preventScroll: true }); setControlSelection(element, range.start, range.end);
   const data = inputType.startsWith("delete") ? null : value;
   const allowed = element.dispatchEvent(new InputEvent("beforeinput", {
     bubbles: true, cancelable: true, composed: true, data, inputType,

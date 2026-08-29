@@ -13,7 +13,7 @@ export const selectSnapshotFrames = async (request: ActionRequest, tabId: number
     documentId: request.target?.documentId,
     url: tabUrl,
   };
-  const available = request.params?.allFrames !== false
+  const available = request.params?.allFrames === true
     ? enumerated.length ? enumerated : [fallback]
     : [fallback];
   const frames: FrameReference[] = available.slice(0, MAX_SNAPSHOT_FRAMES).map((frame) => ({ ...frame, url: limit(frame.url)! }));

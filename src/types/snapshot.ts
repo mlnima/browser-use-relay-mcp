@@ -17,10 +17,10 @@ export type CatalogElement = {
   href?: string;
   placeholder?: string;
   bounds?: ElementBounds;
-  visible: boolean;
-  enabled: boolean;
-  editable: boolean;
-  readonly: boolean;
+  visible?: false;
+  enabled?: false;
+  editable?: true;
+  readonly?: true;
   checked?: boolean;
   selected?: boolean;
   selectedValues?: string[];
@@ -36,8 +36,10 @@ export type SnapshotCatalogMetadata = {
   stringTruncationCount: number;
   omittedAttributeCount: number;
   omittedSelectedValueCount: number;
+  omittedElementCount?: number;
+  unstable?: boolean;
   truncated: boolean;
-  truncationReason?: "maxElements" | "maxBytes" | "maxScannedElements";
+  truncationReason?: "maxElements" | "maxBytes" | "maxScannedElements" | "maxMcpResultBytes";
 };
 
 export type FrameSnapshot = {

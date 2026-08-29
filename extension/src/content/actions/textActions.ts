@@ -26,7 +26,7 @@ const changeFocus = (target: Element | undefined, field: boolean, blur: boolean)
   const compatible = !field || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement || element instanceof HTMLButtonElement || element instanceof HTMLInputElement && element.type !== "hidden";
   if (!compatible || !isElementEnabled(element)) throw new Error("The target is not an enabled compatible focus target.");
   if (blur && getDeepActiveElement() !== element) throw new Error("The target is not currently focused.");
-  blur ? element.blur() : element.focus(); const active = getDeepActiveElement();
+  blur ? element.blur() : element.focus({ preventScroll: true }); const active = getDeepActiveElement();
   if (blur ? active === element : active !== element) throw new Error(`The target did not ${blur ? "blur" : "focus"}.`);
   return true;
 };

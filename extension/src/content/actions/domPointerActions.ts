@@ -11,8 +11,8 @@ const event = (type: string, requested: unknown = 0) => {
 
 export const domPointerActionHandlers: Record<string, ContentActionHandler> = {
   leftClick: async ({ target }) => (requireHtmlElement(target).click(), true),
-  clickElement: async ({ target }) => (requireHtmlElement(await requireActionableElement(target)).click(), true),
-  findAndClick: async ({ target }) => (requireHtmlElement(await requireActionableElement(target)).click(), true),
+  clickElement: async ({ target, resolveTarget, signal }) => (requireHtmlElement(await requireActionableElement(target, resolveTarget, signal)).click(), true),
+  findAndClick: async ({ target, resolveTarget, signal }) => (requireHtmlElement(await requireActionableElement(target, resolveTarget, signal)).click(), true),
   doubleClick: async ({ target }) => requireHtmlElement(target).dispatchEvent(event("dblclick")),
   tripleClick: async ({ target }) => {
     const element = requireHtmlElement(target);

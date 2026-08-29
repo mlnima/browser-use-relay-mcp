@@ -1,5 +1,5 @@
 export const actionParameterOverrides = {
-  snapshot: "params: includeScreenshot, includeHidden, allFrames, maxElements; maxElements, the 100000 scanned-element work budget, and the catalog byte budget are global across at most 256 frames with truthful truncation metadata. Omitted and inaccessible frames are reported; screenshots use a smaller catalog byte budget.",
+  snapshot: "params: includeScreenshot, includeHidden, allFrames, maxElements. The top frame is the default; request allFrames only when needed. Snapshots contain sparse semantic descriptors, omit default states and bounds, and enforce complete MCP-result limits with truthful truncation metadata. Screenshots are returned as MCP image content instead of JSON text.",
   waitNavigation: "params.event may be committed, domContentLoaded, completed, error, historyStateUpdated, or referenceFragmentUpdated; URL filters also apply to SPA/hash events.",
   querySelectorAll: "target.locator.selector or params.selector; offset 0..100000 and limit 1..5000. Returns a page with truncation, nextOffset, encodedBytes, and a 6MiB byte limit.",
   traverse: "params.relationship parent|ancestor|child|descendant|nextSibling|previousSibling|sibling, locator, index.",

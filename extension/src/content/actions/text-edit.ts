@@ -6,7 +6,7 @@ import { getControlSelection, isTextControl, replaceControlText, setControlSelec
 export const getEditableLength = (element: HTMLElement) => isTextControl(element) ? element.value.length : getContentLength(element);
 export const getEditableSelection = (element: HTMLElement): TextOffsets => isTextControl(element) ? getControlSelection(element) : getContentSelection(element);
 export const selectEditableRange = (element: HTMLElement, start: number, end: number): TextOffsets => {
-  element.focus(); return isTextControl(element) ? setControlSelection(element, start, end) : setContentSelection(element, start, end);
+  element.focus({ preventScroll: true }); return isTextControl(element) ? setControlSelection(element, start, end) : setContentSelection(element, start, end);
 };
 const failSize = (): never => {
   throw Object.assign(new Error(`Editable content exceeds the ${MAX_CONTENT_VALUE_BYTES}-byte encoded scalar limit.`), { contentCode: "CONTENT_RESULT_TOO_LARGE" });
@@ -19,7 +19,7 @@ const replaceContentText = (element: HTMLElement, value: string, start: number, 
   const before = getContentText(element), offsets = whole ? { start: 0, end: before.length } : normalizedRange(start, end, before.length);
   if (jsonStringPartsBytesWithin([before.slice(0, offsets.start), value, before.slice(offsets.end)], MAX_CONTENT_VALUE_BYTES) === undefined) failSize();
   const expected = `${before.slice(0, offsets.start)}${value}${before.slice(offsets.end)}`;
-  element.focus(); const range = document.createRange();
+  element.focus({ preventScroll: true }); const range = document.createRange();
   if (whole) range.selectNodeContents(element);
   else {
     setContentSelection(element, offsets.start, offsets.end); const current = document.getSelection()?.getRangeAt(0);

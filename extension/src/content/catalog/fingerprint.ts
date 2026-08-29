@@ -60,7 +60,7 @@ export const createFingerprint = (element: Element, source?: FingerprintSource):
 export const scoreFingerprint = (expected: ElementFingerprint, element: Element): number => {
   const current = createFingerprint(element);
   if (current.tag !== expected.tag) return -1;
-  let score = 0;
+  let score = current.path === expected.path ? 12 : -4;
   if (expected.role) score += current.role === expected.role ? 4 : -4;
   if (expected.name) score += current.name === expected.name ? 10 : -5;
   if (expected.text) score += current.text === expected.text ? 8 : -3;

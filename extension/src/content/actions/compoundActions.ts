@@ -70,9 +70,9 @@ const wait = (milliseconds: number, signal: AbortSignal) => new Promise<void>((r
 });
 const requireValue = (params: Record<string, unknown> | undefined) => { if (!Object.prototype.hasOwnProperty.call(params || {}, "value")) throw new Error("params.value is required."); };
 export const compoundActionHandlers: Record<string, ContentActionHandler> = {
-  fillField: async (context) => (requireValue(context.request.params), textActionHandlers.setValue({ ...context, target: await requireActionableElement(context.target) })),
-  findAndFill: async (context) => (requireValue(context.request.params), textActionHandlers.setValue({ ...context, target: await requireActionableElement(context.target) })),
-  chooseOption: async (context) => formActionHandlers.selectOption({ ...context, target: await requireActionableElement(context.target) }),
+  fillField: async (context) => (requireValue(context.request.params), textActionHandlers.setValue({ ...context, target: await requireActionableElement(context.target, context.resolveTarget, context.signal) })),
+  findAndFill: async (context) => (requireValue(context.request.params), textActionHandlers.setValue({ ...context, target: await requireActionableElement(context.target, context.resolveTarget, context.signal) })),
+  chooseOption: async (context) => formActionHandlers.selectOption({ ...context, target: await requireActionableElement(context.target, context.resolveTarget, context.signal) }),
   extractTable: async ({ target }) => extractTable(requireElement(target)),
   extractLinks: async ({ request }) => extractLinks(request.params?.limit, request.params?.offset),
   scrollUntilFound: async ({ request, resolveTarget, signal }) => {
@@ -80,7 +80,7 @@ export const compoundActionHandlers: Record<string, ContentActionHandler> = {
     const intervalMs = queryInteger(request.params?.intervalMs, 250, 1, MAX_COMPOUND_ACTION_INTERVAL_MS, "intervalMs");
     if (resolveTarget()) return { found: true, scrolls: 0 };
     for (let index = 0; index < limit; index += 1) {
-      window.scrollBy({ top: Number(request.params?.step ?? innerHeight * 0.8), behavior: "smooth" });
+      window.scrollBy({ top: Number(request.params?.step ?? innerHeight * 0.8), behavior: "instant" });
       await wait(intervalMs, signal);
       if (resolveTarget()) return { found: true, scrolls: index + 1 };
     }
@@ -92,7 +92,7 @@ export const compoundActionHandlers: Record<string, ContentActionHandler> = {
     for (let index = 0; index < limit; index += 1) {
       const element = resolveTarget();
       if (!element) return { gone: true, clicks: index };
-      requireHtmlElement(await requireActionableElement(element)).click();
+      requireHtmlElement(await requireActionableElement(element, resolveTarget, signal)).click();
       await wait(intervalMs, signal);
     }
     return { gone: !resolveTarget(), clicks: limit };

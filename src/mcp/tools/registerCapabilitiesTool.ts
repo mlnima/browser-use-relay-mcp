@@ -7,7 +7,7 @@ import { categoryParameterGuides, targetGuide } from "../../protocol/parameterGu
 import type { JsonValue } from "../../types/json.js";
 import type { RelayClient } from "../../types/mcp.js";
 import { createActionRequest } from "../createActionRequest.js";
-import { resultContent } from "../result.js";
+import { structuredResultContent } from "../result.js";
 
 const compactRuntimeData = (data: JsonValue | undefined): JsonValue => {
   if (!data || typeof data !== "object" || Array.isArray(data)) return data ?? null;
@@ -66,7 +66,7 @@ export const registerCapabilitiesTool = (server: McpServer, client: RelayClient)
     outputSchema: z.strictObject({ protocolVersion: z.string(), targetGuide: z.any(), categoryParameterGuides: z.any(), actionParameterOverrides: z.any(), actions: z.array(z.any()), runtime: z.any() }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   },
-  async (input, context) => resultContent({
+  async (input, context) => structuredResultContent({
     protocolVersion: RELAY_PROTOCOL_VERSION,
     targetGuide,
     ...capabilityCatalog(input),

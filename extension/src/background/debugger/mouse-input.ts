@@ -6,6 +6,8 @@ import { resolvePoint, type ViewportPoint } from "./resolve-point";
 import { abortableDelay, assertInputDuration, inputDuration } from "./abortable-delay";
 import { activeMouseDrag, clearMouseState, heldMouseButtonMask, holdMouseDrag, latestMouseButton, mouseButtonMask, mousePosition, pressMouseButton, releaseHeldMouseButton, releaseMouseButton, setMousePosition, takeHeldMouseState } from "./mouse-state";
 const mouseActions = new Set(["move", "moveTo", "hover", "unhover", "mouseDown", "mouseUp", "leftClick", "middleClick", "rightClick", "doubleClick", "tripleClick", "clickAndHold", "release", "longPress", "contextMenu", "modifierClick", "dragStart", "dragMove", "dragEnd", "dragAndDrop", "dragToElement", "dragToCoordinates", "dragScrollbar", "dragSlider", "selectTextByDragging"]);
+const targetCorrectionLimit = 3;
+const targetCorrectionDurationMs = 80;
 const buttonFor = (action: string, requested: unknown) => {
   const button = requested ? String(requested) : /right|context/i.test(action) ? "right" : /middle/i.test(action) ? "middle" : "left";
   if (!["left", "right", "middle", "back", "forward"].includes(button)) throw new Error(`Unsupported mouse button "${button}".`);
@@ -55,7 +57,7 @@ export const executeMouseInput = async (request: ActionRequest, tabId: number, s
   const acquiring = !releasing && !["move", "moveTo", "hover", "unhover", "dragMove"].includes(request.action);
   if (acquiring && (heldMouseButtonMask(tabId) & mouseButtonMask(button))) throw new Error(`Browser pointer button "${button}" is already held.`);
   const hasPointTarget = request.target?.elementId !== undefined || request.target?.locator !== undefined || request.target?.x !== undefined || request.target?.y !== undefined;
-  const point = request.action === "unhover" ? { x: -1, y: -1 }
+  let point = request.action === "unhover" ? { x: -1, y: -1 }
     : releasing && !hasPointTarget ? mousePosition(tabId) : await resolvePoint(request, tabId, signal);
   if (!point) throw new Error("No held browser pointer position is available to release.");
   const requestedModifiers = modifierMask(request.params?.modifiers);
@@ -65,9 +67,29 @@ export const executeMouseInput = async (request: ActionRequest, tabId: number, s
   const dragging = ["dragAndDrop", "dragToElement", "dragToCoordinates", "dragScrollbar", "dragSlider", "selectTextByDragging"].includes(request.action);
   const dragDuration = dragging ? inputDuration(request.params?.durationMs, 420, "durationMs") : 0; const holdDuration = request.action === "longPress" ? inputDuration(request.params?.durationMs, 750, "durationMs") : 0;
   const clickInterval = count > 1 ? inputDuration(request.params?.clickIntervalMs, 90, "clickIntervalMs") : 0;
-  assertInputDuration(movementDuration + dragDuration + holdDuration + clickInterval * (count - 1), "Mouse action duration");
+  const resolvesElementPoint = acquiring && (request.target?.elementId !== undefined || request.target?.locator !== undefined);
+  const correctionDuration = resolvesElementPoint ? Math.min(targetCorrectionDurationMs, movementDuration) : 0;
+  assertInputDuration(movementDuration + correctionDuration * targetCorrectionLimit + dragDuration + holdDuration + clickInterval * (count - 1), "Mouse action duration");
   await move(tabId, point, movementDuration, modifiers, signal, continuingDrag ? activeDrag?.button : undefined);
   if (["move", "moveTo", "hover", "unhover", "dragMove"].includes(request.action)) return point;
+  if (resolvesElementPoint) {
+    let stable = false;
+    for (let correction = 0; correction < targetCorrectionLimit; correction += 1) {
+      const currentPoint = await resolvePoint(request, tabId, signal);
+      if (Math.hypot(currentPoint.x - point.x, currentPoint.y - point.y) <= 0.5) {
+        point = currentPoint;
+        stable = true;
+        break;
+      }
+      await move(tabId, currentPoint, correctionDuration, modifiers, signal);
+      point = currentPoint;
+    }
+    if (!stable) {
+      const currentPoint = await resolvePoint(request, tabId, signal);
+      if (Math.hypot(currentPoint.x - point.x, currentPoint.y - point.y) > 0.5) throw new Error("Target position timed out while stabilizing before pointer input.");
+      point = currentPoint;
+    }
+  }
   if (request.action === "dragStart") {
     await pressMouseButton(tabId, point, button, count, modifiers, signal); holdMouseDrag(tabId, button, requestedModifiers, point);
     return point;
@@ -77,16 +99,16 @@ export const executeMouseInput = async (request: ActionRequest, tabId: number, s
   if (dragging) {
     const destinationTarget = request.params?.destination && typeof request.params.destination === "object" && !Array.isArray(request.params.destination) ? request.params.destination as unknown as ActionTarget : undefined;
     const routing = destinationTarget?.frameId === undefined && destinationTarget?.documentId === undefined ? { frameId: request.target?.frameId, documentId: request.target?.documentId } : {};
-    const destination = destinationTarget
-      ? await resolvePoint({ ...request, target: { tabId, ...routing, ...destinationTarget } }, tabId, signal)
-      : await resolvePoint({ ...request, target: { tabId, frameId: request.target?.frameId, documentId: request.target?.documentId, x: Number(request.params?.toX ?? point.x), y: Number(request.params?.toY ?? point.y) } }, tabId, signal);
     await pressMouseButton(tabId, point, button, 1, modifiers, signal);
     try {
+      const destination = destinationTarget
+        ? await resolvePoint({ ...request, target: { tabId, ...routing, ...destinationTarget } }, tabId, signal)
+        : await resolvePoint({ ...request, target: { tabId, frameId: request.target?.frameId, documentId: request.target?.documentId, x: Number(request.params?.toX ?? point.x), y: Number(request.params?.toY ?? point.y) } }, tabId, signal);
       await move(tabId, destination, dragDuration, modifiers, signal);
+      return destination;
     } finally {
       await releaseHeldMouseButton(tabId, mousePosition(tabId) || point, button, 1, modifiers, signal);
     }
-    return destination;
   }
   for (let click = 1; click <= count; click += 1) {
     await pressMouseButton(tabId, point, button, click, modifiers, signal);

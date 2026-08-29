@@ -32,6 +32,7 @@ export const executeSnapshot = async (request: ActionRequest, signal?: AbortSign
   let remainingCatalogBytes = catalogByteLimit;
   let encodedBytes = 0, returnedElementCount = 0, scannedElementCount = 0, stringTruncationCount = 0;
   let omittedAttributeCount = 0, omittedSelectedValueCount = 0;
+  let omittedElementCount = 0;
   let elementTruncated = false, byteTruncated = false, scanTruncated = false;
   for (const frame of frames) {
     const target = { ...request.target, tabId, frameId: frame.frameId, documentId: frame.documentId };
@@ -56,6 +57,7 @@ export const executeSnapshot = async (request: ActionRequest, signal?: AbortSign
       stringTruncationCount += countValue(catalog?.stringTruncationCount);
       omittedAttributeCount += countValue(catalog?.omittedAttributeCount);
       omittedSelectedValueCount += countValue(catalog?.omittedSelectedValueCount);
+      omittedElementCount += countValue(catalog?.omittedElementCount);
       elementTruncated ||= catalog?.truncationReason === "maxElements";
       byteTruncated ||= catalog?.truncationReason === "maxBytes";
       scanTruncated ||= catalog?.truncationReason === "maxScannedElements";
@@ -90,6 +92,7 @@ export const executeSnapshot = async (request: ActionRequest, signal?: AbortSign
       omittedFrameCount: frameSelection.omittedFrameCount,
       returnedElementCount, scannedElementCount, scannedElementLimit: MAX_SNAPSHOT_SCANNED_ELEMENTS, stringTruncationCount,
       omittedAttributeCount, omittedSelectedValueCount, truncated: elementTruncated || byteTruncated || scanTruncated,
+      omittedElementCount,
       ...(byteTruncated ? { truncationReason: "maxBytes" } : elementTruncated ? { truncationReason: "maxElements" } : scanTruncated ? { truncationReason: "maxScannedElements" } : {}),
     },
     outputLimits: { stringCharacterLimit: MAX_SNAPSHOT_STRING_CHARACTERS, stringTruncationCount: limiter.stats.truncatedStrings },

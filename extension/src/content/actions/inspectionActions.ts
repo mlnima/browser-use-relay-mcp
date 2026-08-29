@@ -53,8 +53,8 @@ export const inspectionActionHandlers: Record<string, ContentActionHandler> = {
   queryPlaceholder: async ({ resolveTarget }) => describeElement(resolveTarget()),
   queryCoordinates: async ({ resolveTarget }) => describeElement(resolveTarget()),
   findInFrame: async ({ resolveTarget }) => describeElement(resolveTarget()),
-  getBoundingBox: async ({ target, request }) => {
-    if (request.params?.actionable === true) return getActionableBounds(target);
+  getBoundingBox: async ({ target, request, resolveTarget, signal }) => {
+    if (request.params?.actionable === true) return getActionableBounds(target, resolveTarget, signal);
     const element = requireElement(target);
     const bounds = element.getBoundingClientRect();
     return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height, path: getElementPath(element) };

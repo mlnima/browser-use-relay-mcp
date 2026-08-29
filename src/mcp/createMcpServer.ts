@@ -10,7 +10,7 @@ import { registerQueryTool } from "./tools/registerQueryTool.js";
 import { registerSnapshotTool } from "./tools/registerSnapshotTool.js";
 import { registerUploadTool } from "./tools/registerUploadTool.js";
 
-const instructions = `Control exactly one configured Chromium browser through its local or LAN relay. Call browser_capabilities before unfamiliar actions and browser_snapshot before targeting page elements. Prefer element IDs from the latest revision. Use browser_query for reads, browser_action for one action, and browser_batch for ordered workflows. Automatic routing prefers real browser input and revalidates targets. The catalog never adds IDs or classes to websites.`;
+const instructions = `Control exactly one configured Chromium browser through its local or LAN relay. Call browser_capabilities only for unfamiliar actions and browser_snapshot before targeting page elements. Prefer focused top-frame snapshots and element IDs from the latest revision; request all frames or explicit bounding boxes only when needed. Snapshot descriptors are sparse: absent visible/enabled mean true, while absent editable/readonly mean false. Use browser_query for reads, browser_action for one action, and browser_batch for ordered workflows. Automatic routing prefers real browser input and revalidates targets. The catalog never adds IDs or classes to websites.`;
 
 export const createMcpServer = (client: RelayClient) => {
   const server = new McpServer({ name: PACKAGE_NAME, version: "1.0.0" }, { instructions });

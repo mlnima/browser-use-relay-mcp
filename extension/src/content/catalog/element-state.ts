@@ -41,9 +41,12 @@ export const isElementReadonly = (element: Element): boolean =>
   element.getAttribute("aria-readonly") === "true"
   || (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) && element.readOnly;
 
-export const isElementEditable = (element: Element): boolean => {
-  if (!isElementEnabled(element)) return false;
-  if (isElementReadonly(element)) return false;
+export const isElementEditable = (
+  element: Element,
+  enabled = isElementEnabled(element),
+  readonly = isElementReadonly(element),
+): boolean => {
+  if (!enabled || readonly) return false;
   if (document.designMode === "on") return true;
   if (element instanceof HTMLElement && element.isContentEditable) return true;
   if (element instanceof HTMLTextAreaElement) return !element.readOnly;

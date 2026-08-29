@@ -6,7 +6,7 @@ import { jsonValueFitsLimits } from "./jsonValueLimits.js";
 export const engineSchema = z.enum(["auto", "browser", "dom", "native"]);
 
 export const locatorSchema = z.strictObject({
-  selector: z.string().min(1).optional(),
+  selector: z.string().min(1).describe("Standard CSS selector only; use locator.text for visible text matching.").optional(),
   xpath: z.string().min(1).optional(),
   text: z.string().min(1).optional(),
   exactText: z.boolean().optional(),

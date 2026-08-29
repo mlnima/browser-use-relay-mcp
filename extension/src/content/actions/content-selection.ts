@@ -63,7 +63,7 @@ export const getContentSelectedText = (element: HTMLElement) => {
   const index = scanText(element); return selectedText(index, selectionOffsets(element, index));
 };
 export const selectContentAll = (element: HTMLElement): TextOffsets => {
-  const index = scanText(element); element.focus(); const range = document.createRange(); range.selectNodeContents(element);
+  const index = scanText(element); element.focus({ preventScroll: true }); const range = document.createRange(); range.selectNodeContents(element);
   const selection = document.getSelection(); selection?.removeAllRanges(); selection?.addRange(range);
   return { start: 0, end: index.length };
 };

@@ -42,8 +42,8 @@ const selectorCandidates = (selector: string | undefined): Element[] => {
   if (!selector) return collectElements();
   try {
     return querySelectorAllOpen(selector);
-  } catch {
-    return [];
+  } catch (error) {
+    throw new Error(`Invalid standard CSS selector: ${error instanceof Error ? error.message : selector}`);
   }
 };
 

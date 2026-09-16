@@ -59,12 +59,13 @@ export const updateSettings = async (patch: Partial<ExtensionSettings>, beforeUp
 
 export const updateNativeState = async (message: NativeState) => {
   if (message.generation !== generation) return undefined;
-  const next = message.settings.enabled ? {
-    settings: { ...message.settings },
+  const settings = { ...state.settings, port: message.settings.port };
+  const next = settings.enabled ? {
+    settings,
     status: message.status.error ? "error" : message.status.connected ? "connected" : message.status.listening ? "listening" : "connecting",
     addresses: { localIp: message.addresses.local, networkIp: message.addresses.network },
     statusMessage: message.status.error,
-  } satisfies ExtensionState : { settings: { ...message.settings }, status: "disconnected", addresses: {} } satisfies ExtensionState;
+  } satisfies ExtensionState : { settings, status: "disconnected", addresses: {} } satisfies ExtensionState;
   state = next;
   publish();
   await persistSettings(next.settings);

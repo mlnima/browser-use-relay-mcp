@@ -38,8 +38,12 @@ export const isActionRequest = (value: unknown): value is ActionRequest => {
     (value.target === undefined || isTarget(value.target)) &&
     (value.params === undefined || isObjectRecord(value.params) && isJsonValue(value.params)) &&
     optionalInteger(value.timeoutMs, 1, MAX_TIMER_MS) && optionalInteger(value.retries, 0, 10) &&
-    optionalInteger(value.retryDelayMs, 0, MAX_TIMER_MS) && optionalInteger(value.expectedRevision, 0);
+    optionalInteger(value.retryDelayMs, 0, MAX_TIMER_MS) && optionalInteger(value.expectedRevision, 0) &&
+    isActionDelaySettings(value);
 };
+export const isActionDelaySettings = (value: Record<string, unknown>) =>
+  optionalInteger(value.actionDelayMinMs, 0, MAX_TIMER_MS) && optionalInteger(value.actionDelayMaxMs, 0, MAX_TIMER_MS) &&
+  (value.actionDelayMinMs === undefined || value.actionDelayMaxMs === undefined || Number(value.actionDelayMaxMs) >= Number(value.actionDelayMinMs));
 const isActionError = (value: unknown): value is ActionError => isObjectRecord(value) &&
   identifier(value.code) && typeof value.message === "string" && value.message.length <= MAX_RELAY_ERROR_CHARACTERS &&
   typeof value.retryable === "boolean" && (value.details === undefined ||

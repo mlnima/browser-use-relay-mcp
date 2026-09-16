@@ -39,7 +39,12 @@ export const getSettingsIntent = (): SettingsIntent => ({ generation, settings: 
 export const isCurrentSettingsGeneration = (candidate: number) => candidate === generation;
 
 export const updateSettings = async (patch: Partial<ExtensionSettings>, beforeUpdate?: BeforeSettingsUpdate) => {
-  const settings = { ...state.settings, ...patch };
+  const { actionDelayMinMs, actionDelayMaxMs, ...otherSettings } = { ...state.settings, ...patch };
+  const settings = {
+    ...otherSettings,
+    ...(actionDelayMinMs === undefined ? {} : { actionDelayMinMs }),
+    ...(actionDelayMaxMs === undefined ? {} : { actionDelayMaxMs }),
+  };
   generation += 1;
   const intent = { generation, settings: { ...settings } } satisfies SettingsIntent;
   await beforeUpdate?.(intent);

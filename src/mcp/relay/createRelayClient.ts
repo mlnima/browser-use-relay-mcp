@@ -1,6 +1,7 @@
 import WebSocket from "ws";
 import type { ActionRequest } from "../../types/action.js";
 import type { RelayClient } from "../../types/mcp.js";
+import type { ActionDelaySettings } from "../../types/settings.js";
 import { awaitSignal } from "./awaitSignal.js";
 import { createPendingActions } from "./createPendingActions.js";
 import { createRelayEventBuffer } from "./createRelayEventBuffer.js";
@@ -14,7 +15,7 @@ const retryDelay = (milliseconds: number, signal: AbortSignal) => new Promise<vo
   signal.addEventListener("abort", abort, { once: true });
   if (signal.aborted) abort();
 });
-export const createRelayClient = (url: string, connectTimeoutMs: number, actionTimeoutMs: number): RelayClient => {
+export const createRelayClient = (url: string, connectTimeoutMs: number, actionTimeoutMs: number, delaySettings: ActionDelaySettings = {}): RelayClient => {
   let socket: WebSocket | undefined; let connecting: Promise<void> | undefined;
   let connectAbort: AbortController | undefined; let closing = false;
   const pending = createPendingActions();
@@ -77,7 +78,11 @@ export const createRelayClient = (url: string, connectTimeoutMs: number, actionT
     signal?.throwIfAborted();
     const activeSocket = socket;
     if (activeSocket?.readyState !== WebSocket.OPEN) throw new Error("Relay connection is not open.");
-    return executeRelayAction(activeSocket, pending, request, actionTimeoutMs, signal);
+    return executeRelayAction(activeSocket, pending, {
+      ...request,
+      actionDelayMinMs: delaySettings.actionDelayMinMs,
+      actionDelayMaxMs: delaySettings.actionDelayMaxMs,
+    }, actionTimeoutMs, signal);
   };
   const close = async () => {
     closing = true;

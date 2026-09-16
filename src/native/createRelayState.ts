@@ -51,5 +51,5 @@ export const createRelayState = (write: (message: NativeMessage) => void) => {
     if (initialized) emit();
   };
 
-  return { configured, connected, failed };
+  return { configured, connected, failed, current: () => ({ settings, addresses, listening }) };
 };

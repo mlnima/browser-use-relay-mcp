@@ -1,4 +1,9 @@
-export type RelaySettings = {
+export type ActionDelaySettings = {
+  actionDelayMinMs?: number;
+  actionDelayMaxMs?: number;
+};
+
+export type RelaySettings = ActionDelaySettings & {
   enabled: boolean;
   externalAccess: boolean;
   port?: number;

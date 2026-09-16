@@ -1,6 +1,8 @@
+import type { ActionDelaySettings } from "../../../src/types/settings.js";
+
 export type RelayStatus = "connected" | "listening" | "connecting" | "disconnected" | "error";
 
-export type ExtensionSettings = {
+export type ExtensionSettings = ActionDelaySettings & {
   enabled: boolean;
   externalAccess: boolean;
   port?: number;

@@ -1,5 +1,6 @@
 import type { ActionRequest, ActionResult } from "./action.js";
 import type { RelayEvent } from "./relay.js";
+import type { ActionDelaySettings } from "./settings.js";
 
 export type SequencedRelayEvent = RelayEvent & { sequence: number };
 export type RelayEventBatch = {
@@ -21,7 +22,7 @@ export type RelayClient = {
   close: () => Promise<void>;
 };
 
-export type McpConfiguration = {
+export type McpConfiguration = ActionDelaySettings & {
   relayUrl: string;
   connectTimeoutMs: number;
   actionTimeoutMs: number;

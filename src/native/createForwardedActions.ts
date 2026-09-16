@@ -9,12 +9,14 @@ import { sendRelayMessage } from "./relaySend.js";
 export const createForwardedActions = (
   write: (message: NativeMessage) => void,
   cancelNative: (id: string, reason: string, socket: WebSocket) => void,
+  onComplete: () => void,
 ) => {
   const registry = createForwardedActionRegistry();
   const complete = (extensionId: string, result: ActionResult) => {
     const action = registry.takeResult(extensionId);
     if (!action) return false;
     clearTimeout(action.timer);
+    onComplete();
     sendRelayMessage(action.socket, { type: "result", result: { ...result, id: action.request.id } });
     return true;
   };
@@ -25,6 +27,7 @@ export const createForwardedActions = (
     write({ type: "cancel", id: extensionId, reason });
     cancelNative(extensionId, reason, action.socket);
     clearTimeout(action.timer);
+    onComplete();
     sendRelayMessage(action.socket, { type: "result", result: failedActionResult(
       action.request, "ACTION_CANCELLED", reason,
       Math.round(performance.now() - action.startedAt),
@@ -40,6 +43,7 @@ export const createForwardedActions = (
       if (!current) return;
       write({ type: "cancel", id: extensionId, reason: "Action timed out in the relay." });
       cancelNative(extensionId, "Action timed out in the relay.", socket);
+      onComplete();
       sendRelayMessage(socket, { type: "result", result: failedActionResult(
         request, "ACTION_TIMEOUT", `Action timed out after ${timeoutMs} ms.`,
         Math.round(performance.now() - startedAt), true,

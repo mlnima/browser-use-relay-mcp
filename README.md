@@ -116,6 +116,11 @@ Optional environment settings:
 
 - `BROWSER_RELAY_CONNECT_TIMEOUT_MS` — WebSocket connection timeout; default `10000`.
 - `BROWSER_RELAY_ACTION_TIMEOUT_MS` — default action timeout; default `60000`.
+- `BROWSER_RELAY_ACTION_DELAY_MIN_MS` and `BROWSER_RELAY_ACTION_DELAY_MAX_MS` — optional minimum and maximum intervals between browser actions, in milliseconds. The equivalent flags are `--action-delay-min-ms` and `--action-delay-max-ms`; each flag takes precedence over its environment setting.
+
+Set action delays in the MCP JSON `env` object or the target browser extension's Settings. For example, `"BROWSER_RELAY_ACTION_DELAY_MIN_MS": "500"` and `"BROWSER_RELAY_ACTION_DELAY_MAX_MS": "1000"` select a random interval from 500 to 1000 milliseconds. One supplied endpoint means a fixed interval. An explicit MCP range overrides the extension's entire range; an explicit zero disables the delay when supplied alone or for both endpoints. Without MCP values, the browser uses its saved extension values. With neither configured, no delay is imposed.
+
+Delays are enforced on the browser device, including over LAN, before each action and each `browser_batch` member. Time already spent since the previous dispatch or completion counts toward the interval, so slow model responses do not add another full wait. Concurrent observation waits remain active while later actions are dispatched. Internal file-transfer chunks, finalization, and cleanup are not paced. Delay time counts toward the action timeout. Extension delay changes apply to subsequent actions without restarting the relay.
 
 If the browser device has several physical or virtual adapters, set `BROWSER_USE_RELAY_NETWORK_ADDRESS` in the browser process environment to the assigned LAN IPv4 address that External Access should display.
 

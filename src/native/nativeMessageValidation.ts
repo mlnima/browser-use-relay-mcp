@@ -1,11 +1,12 @@
 import { MAX_CANCEL_REASON_LENGTH } from "../protocol/limits.js";
 import type { NativeMessage } from "../types/relay.js";
-import { isActionRequest, isActionResult } from "./actionValidation.js";
+import { isActionDelaySettings, isActionRequest, isActionResult } from "./actionValidation.js";
 import { isJsonValue, isObjectRecord } from "./jsonValueValidation.js";
 
 const isSettings = (value: unknown) => isObjectRecord(value) && typeof value.enabled === "boolean" &&
   typeof value.externalAccess === "boolean" && (value.port === undefined ||
-    typeof value.port === "number" && Number.isSafeInteger(value.port) && value.port > 0 && value.port <= 65_535);
+    typeof value.port === "number" && Number.isSafeInteger(value.port) && value.port > 0 && value.port <= 65_535) &&
+  isActionDelaySettings(value);
 const isGeneration = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 const isCancel = (value: Record<string, unknown>) => typeof value.id === "string" && Boolean(value.id) &&
   (value.reason === undefined || typeof value.reason === "string" && value.reason.length <= MAX_CANCEL_REASON_LENGTH);

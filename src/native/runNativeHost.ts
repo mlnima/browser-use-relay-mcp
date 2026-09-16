@@ -22,7 +22,7 @@ export const runNativeHost = async () => {
   };
   const write = (message: NativeMessage) => void writeNativeMessage(message).catch(outputFailed);
   const state = createRelayState(write);
-  const actions = createActionCoordinator(write);
+  const actions = createActionCoordinator(write, () => state.current().settings);
   const transport = createRelayTransport({
     action: actions.onRelayAction,
     cancel: actions.onRelayCancel,
@@ -35,6 +35,11 @@ export const runNativeHost = async () => {
   const configure = async (generation: number, input: RelaySettings) => {
     const settings = normalizeRelaySettings(input);
     try {
+      const current = state.current();
+      if (current.listening && settings.enabled && current.settings.externalAccess === settings.externalAccess && current.settings.port === settings.port) {
+        state.configured(generation, settings, current.addresses, true);
+        return;
+      }
       await transport.stop();
       if (!settings.enabled) {
         state.configured(generation, settings, {}, false);

@@ -6,7 +6,7 @@ import { createRelayClient } from "./relay/createRelayClient.js";
 
 const start = async () => {
   const configuration = resolveMcpConfiguration();
-  const client = createRelayClient(configuration.relayUrl, configuration.connectTimeoutMs, configuration.actionTimeoutMs);
+  const client = createRelayClient(configuration.relayUrl, configuration.connectTimeoutMs, configuration.actionTimeoutMs, configuration);
   const handle = serveStdio(() => createMcpServer(client));
   let stopping: Promise<void> | undefined;
   const stop = () => stopping ||= Promise.allSettled([handle.close(), client.close()]).then((results) => {

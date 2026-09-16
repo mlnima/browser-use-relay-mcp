@@ -30,7 +30,7 @@ export const createNativeRunner = () => {
     queue = task.then(() => undefined, () => undefined);
     return task;
   };
-  const execute = (request: ActionRequest, owner: object, reply: Reply) => {
+  const execute = (request: ActionRequest, owner: object, reply: Reply, beforeExecute?: (signal: AbortSignal, dispatch: () => boolean) => Promise<boolean>) => {
     const startedAt = performance.now();
     const controller = new AbortController();
     const timeoutMs = request.timeoutMs ?? DEFAULT_ACTION_TIMEOUT_MS;
@@ -40,7 +40,22 @@ export const createNativeRunner = () => {
     let resolveSettled: () => void = () => undefined;
     const settled = new Promise<void>((resolve) => { resolveSettled = resolve; });
     ownerActions(owner).set(request.id, { controller, timer, settled });
-    const task = append(() => runWithNativeInputOwner(owner, () => executeNativeWithRetries(request, controller.signal, owner)));
+    const run = () => runWithNativeInputOwner(owner, () => executeNativeWithRetries(request, controller.signal, owner));
+    const dispatch = async () => {
+      if (!beforeExecute) return append(run);
+      for (;;) {
+        const previous = queue;
+        await previous;
+        controller.signal.throwIfAborted();
+        let scheduled: ReturnType<typeof run> | undefined;
+        if (await beforeExecute(controller.signal, () => {
+          if (queue !== previous) return false;
+          scheduled = append(run);
+          return true;
+        })) return scheduled;
+      }
+    };
+    const task = dispatch();
     void task.then((data) => reply({
       id: request.id,
       success: true,

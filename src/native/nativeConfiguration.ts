@@ -4,6 +4,8 @@ import { DEFAULT_RELAY_PORT } from "./constants.js";
 export const normalizeRelaySettings = (settings: RelaySettings): RelaySettings => ({
   enabled: settings.enabled === true,
   externalAccess: settings.externalAccess === true,
+  actionDelayMinMs: settings.actionDelayMinMs,
+  actionDelayMaxMs: settings.actionDelayMaxMs,
   ...(Number.isInteger(settings.port) && (settings.port || 0) > 0 && (settings.port || 0) <= 65_535
     ? { port: settings.port }
     : {}),

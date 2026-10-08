@@ -8,8 +8,8 @@ this is a general purpose chrome extension, so do not mention anything about spe
 - Tailwind styling library
 
 ## folder structure
-- the browser extension will be in `E:\dev\eskai.net\packages\browser-use-relay-mcp\extension` directory.
-- mcp client server will be on the root of the working directory which is `E:\dev\eskai.net\packages\browser-use-relay-mcp`
+- the browser extension will be in `\apps\mcp\browser-use-relay-mcp\extension` directory.
+- mcp client server will be on the root of the working directory which is `\apps\mcp\browser-use-relay-mcp`
 
 ## extension permissions
 - it must get all the permissions by default in order to avoid mistakes.

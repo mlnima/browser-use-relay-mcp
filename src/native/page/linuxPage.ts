@@ -129,11 +129,12 @@ export const openLinuxPage = (page: NativePage): NativePageSurface => {
         .filter(([symbol]) => { const code = keyCode(display, symbol); return bytes[code >> 3] & 1 << (code & 7); })
         .map(([, name]) => String(name));
     },
-    verify: (point) => {
+    verify: (point, keyboardFocus = false) => {
       const next = region(web);
-      if (nativeBinding().getActiveWindow() !== active || !showing(web) || !focused(web) || string(getName(web, null)) !== page.title ||
+      if (nativeBinding().getActiveWindow() !== active || !showing(web) || string(getName(web, null)) !== page.title ||
         Object.keys(rect).some((key) => rect[key as keyof NativePageRect] !== next[key as keyof NativePageRect]))
         return fail("The webpage moved, resized, or lost focus. Take a fresh snapshot.");
+      if (keyboardFocus && !focused(web)) return fail("Keyboard focus is outside the webpage. Click inside the webpage before typing.");
       if (point && (!pointerWindow(display, active, point) || !contains(web, point))) return fail("The pointer target is covered or outside the webpage.");
     },
   };

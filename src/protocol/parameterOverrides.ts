@@ -42,7 +42,7 @@ export const actionParameterOverrides = {
   waitUpload: "target completion element; params completionAttribute/completionValue/completionText/expectedFileCount/stableMs/pollIntervalMs.",
   dragWithData: "target source; params.destination ActionTarget, data record, effectAllowed, dropEffect.",
   multiTouch: "target is the default center; params.points has at most 32 {x?,y?,id?} entries, moves has at most 1000 point arrays or {points:[...]}, and finite top-level pressure/radiusX/radiusY/tiltX/tiltY/twist/tangentialPressure apply uniformly; requested delay totals at most 60000ms.",
-  scrollElement: "DOM uses target-element x/y deltas. Native requires an OS-screen coordinate target and an explicit finite nonzero x or y delta; each axis becomes ceil(abs(delta)/stepSize) native wheel ticks with positive stepSize defaulting to 100 and at most 1000 ticks.",
+  scrollElement: "DOM uses target-element x/y deltas. Native requires a webpage target and an explicit finite nonzero x or y delta; each axis becomes ceil(abs(delta)/stepSize) native wheel ticks with positive stepSize defaulting to 100 and at most 1000 ticks.",
   clickElement: "target identifies the element; optional params.button, modifiers, durationMs, and clickIntervalMs use trusted browser/native input and requested delays total at most 60000ms.",
   fillField: "target must resolve to an enabled compatible editable field before browser input and params.value is limited to 10000 characters; browser/native input engines accept optional slowly and intervalMs with at most 60000ms requested delay, while DOM assigns directly.",
   chooseOption: "target select control; params.value or params.values selects one or several values in the DOM engine.",

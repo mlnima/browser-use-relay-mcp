@@ -26,7 +26,7 @@ const readPage = async (tabId: number) => {
     chrome.windows.get(tab.windowId), chrome.tabs.getZoom(tabId),
     chrome.scripting.executeScript({ target: { tabId, frameIds: [0] }, world: "ISOLATED",
       func: () => ({ title: document.title, url: location.href, width: innerWidth, height: innerHeight,
-        focused: document.hasFocus() && document.visibilityState === "visible" }) }),
+        focused: document.visibilityState === "visible" }) }),
   ]);
   const value = measurements[0]?.result;
   if (!value) throw new Error("The webpage cannot be measured for native input.");

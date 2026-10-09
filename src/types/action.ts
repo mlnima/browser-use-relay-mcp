@@ -41,7 +41,7 @@ export type NativePageRect = { x: number; y: number; width: number; height: numb
 export type NativePageSurface = {
   id: string;
   rect: NativePageRect;
-  verify: (point?: { x: number; y: number }) => void;
+  verify: (point?: { x: number; y: number }, keyboardFocus?: boolean) => void;
   close: () => void;
   keys?: () => string[];
   confine?: (enabled: boolean) => void;

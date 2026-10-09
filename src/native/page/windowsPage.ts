@@ -51,15 +51,14 @@ const focus = (window: number) => {
 };
 const same = (a: NativePageRect, b: NativePageRect) =>
   a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
-const renderer = (window: number, focused: number, depth = 0): number | undefined => {
+const renderer = (window: number, depth = 0): number | undefined => {
   if (depth > 6) return undefined;
   for (let child = find(window, 0, null, null); child; child = find(window, child, null, null)) {
     if (!visible(child)) continue;
     const name = Buffer.alloc(512);
     const length = windowClass(child, name, name.length / 2);
-    if (name.toString("utf16le", 0, length * 2) === "Chrome_RenderWidgetHostHWND" &&
-      (focused === window || focused === child || parent(child, focused))) return child;
-    const nested = renderer(child, focused, depth + 1);
+    if (name.toString("utf16le", 0, length * 2) === "Chrome_RenderWidgetHostHWND") return child;
+    const nested = renderer(child, depth + 1);
     if (nested) return nested;
   }
   return undefined;
@@ -68,11 +67,11 @@ const renderer = (window: number, focused: number, depth = 0): number | undefine
 export const openWindowsPage = (page: NativePage): NativePageSurface => {
   const window = foreground();
   if (!window || !page.focused || !title(window).startsWith(page.title)) return fail("The requested webpage is not foreground.");
-  const child = renderer(window, focus(window));
-  if (!child) return fail("Keyboard focus is outside the webpage surface.");
+  focus(window);
+  const child = renderer(window);
+  if (!child) return fail("The visible webpage surface is unavailable.");
   const rect = region(child);
   if (rect.width <= 0 || rect.height <= 0) return fail("The webpage has no visible input area.");
-  if (!windowsPageFocused(window, child)) return fail("Keyboard focus is outside the webpage.");
   let confined = false;
   return {
     id: `${window}:${child}`, rect, close: () => undefined,
@@ -83,10 +82,11 @@ export const openWindowsPage = (page: NativePage): NativePageSurface => {
       confined = enabled;
     }),
     keys: () => [[0x11, "control"], [0x10, "shift"]].filter(([key]) => keyState(key) < 0).map(([, name]) => String(name)),
-    verify: (point) => {
+    verify: (point, keyboardFocus = false) => {
       if (foreground() !== window || !title(window).startsWith(page.title) || !visible(child) ||
-        !same(rect, region(child)) || !windowsPageFocused(window, child))
+        !same(rect, region(child)))
         return fail("The webpage moved, resized, or lost focus. Take a fresh snapshot before continuing.");
+      if (keyboardFocus && !windowsPageFocused(window, child)) return fail("Keyboard focus is outside the webpage. Click inside the webpage before typing.");
       focus(window);
       if (point && physical(() => { const hit = fromPoint(point); return hit !== child && !parent(child, hit); }))
         return fail("The pointer target is covered or outside the webpage surface.");

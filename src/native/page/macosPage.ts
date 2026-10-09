@@ -12,14 +12,18 @@ const keyState = ax.func("bool CGEventSourceKeyState(int state, uint16 key)");
 const makeString = cf.func("void *CFStringCreateWithCString(void *allocator, str value, uint32 encoding)");
 const stringGet = cf.func("bool CFStringGetCString(void *string, _Out_ char *result, long size, uint32 encoding)");
 const release = cf.func("void CFRelease(void *value)");
+const retain = cf.func("void *CFRetain(void *value)");
+const count = cf.func("long CFArrayGetCount(void *array)");
+const child = cf.func("void *CFArrayGetValueAtIndex(void *array, long index)");
 const equal = cf.func("bool CFEqual(void *left, void *right)");
 const attributes = new Map<string, unknown>();
 const fail = (message: string): never => { throw createNativeError("NATIVE_PAGE_UNAVAILABLE", message); };
-const attribute = (element: unknown, name: string) => {
+const attribute = (element: unknown, name: string, required = true) => {
   const key = attributes.get(name) || makeString(null, name, 0x08000100);
   attributes.set(name, key);
   const value = [null];
-  if (copyAttribute(element, key, value) !== 0 || !value[0]) return fail(`macOS webpage ${name} is unavailable. Accessibility permission is required.`);
+  if (copyAttribute(element, key, value) !== 0 || !value[0])
+    return required ? fail(`macOS webpage ${name} is unavailable. Accessibility permission is required.`) : undefined;
   return value[0];
 };
 const text = (element: unknown, name: string) => {
@@ -56,31 +60,52 @@ const focusedWebArea = (application: unknown) => {
   } catch (error) { release(element); throw error; }
 };
 
+const findWebArea = (element: unknown, title: string, budget: { remaining: number }, depth = 0): unknown => {
+  if (--budget.remaining < 0 || depth > 64) return undefined;
+  if (text(element, "AXRole") === "AXWebArea" && text(element, "AXTitle") === title) return retain(element);
+  const children = attribute(element, "AXChildren", false);
+  if (!children) return undefined;
+  try {
+    for (let index = 0, length = count(children); index < length; index += 1) {
+      const web = findWebArea(child(children, index), title, budget, depth + 1);
+      if (web) return web;
+    }
+    return undefined;
+  } finally { release(children); }
+};
+
 export const openMacosPage = (page: NativePage): NativePageSurface => {
   const system = createSystem();
   let application: unknown;
+  let window: unknown;
   let web: unknown;
   try {
     application = attribute(system, "AXFocusedApplication");
-    web = focusedWebArea(application);
-    if (!page.focused || text(web, "AXTitle") !== page.title) return fail("The requested webpage is not foreground.");
+    window = attribute(application, "AXFocusedWindow");
+    web = findWebArea(window, page.title, { remaining: 10000 });
+    if (!page.focused || !web) return fail("The requested webpage is not foreground.");
     const rect = region(web);
     return {
       id: String(koffi.address(web)), rect,
-      close: () => { release(web); release(application); release(system); },
+      close: () => { release(web); release(window); release(application); release(system); },
       keys: () => [[55, "meta"], [54, "right_meta"], [59, "control"], [62, "right_control"],
         [56, "shift"], [60, "right_shift"], [58, "alt"], [61, "right_alt"]]
         .filter(([key]) => keyState(0, key)).map(([, name]) => String(name)),
-      verify: (point) => {
+      verify: (point, keyboardFocus = false) => {
         const active = attribute(system, "AXFocusedApplication");
         let current: unknown;
         try {
           if (!equal(active, application)) return fail("The webpage lost focus.");
-          current = focusedWebArea(active);
-          const next = region(current);
-          if (!equal(current, web) || text(current, "AXTitle") !== page.title ||
+          current = attribute(active, "AXFocusedWindow");
+          const next = region(web);
+          if (!equal(current, window) || text(web, "AXTitle") !== page.title ||
             Object.keys(rect).some((key) => rect[key as keyof NativePageRect] !== next[key as keyof NativePageRect]))
             return fail("The webpage moved, resized, or lost focus. Take a fresh snapshot.");
+          if (keyboardFocus) {
+            const focused = focusedWebArea(active);
+            try { if (!equal(focused, web)) return fail("Keyboard focus is outside the webpage. Click inside the webpage before typing."); }
+            finally { release(focused); }
+          }
           if (point) {
             const hit = [null];
             if (elementAt(system, point.x, point.y, hit) !== 0 || !hit[0]) return fail("The pointer target is unavailable.");
@@ -98,5 +123,5 @@ export const openMacosPage = (page: NativePage): NativePageSurface => {
         } finally { current && release(current); release(active); }
       },
     };
-  } catch (error) { web && release(web); application && release(application); release(system); throw error; }
+  } catch (error) { web && release(web); window && release(window); application && release(application); release(system); throw error; }
 };

@@ -29,7 +29,7 @@ const move = async (target: NativePoint, signal: AbortSignal) => {
     });
   }
 };
-const prepare = () => { assertNativePagePoint(nativeBinding().getMousePos()); assertNativePageKeys([]); nativeBinding().setMouseDelay(0); };
+const prepare = () => { assertNativePagePoint(nativeBinding().getMousePos()); assertNativePageKeys([], false, false); nativeBinding().setMouseDelay(0); };
 const scroll = (x: number, y: number) => { prepare(); assertNativePageWheel(); nativeBinding().scrollMouse(x, y); };
 
 export const mouse = {

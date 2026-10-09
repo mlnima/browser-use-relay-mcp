@@ -44,7 +44,7 @@ const arm = () => {
     const context = retained;
     if (!context) return disarm();
     try {
-      context.surface.verify();
+      context.surface.verify(undefined, held.size > 0);
       if (blockedModifier(context.surface)) throw createNativeError("NATIVE_PAGE_SHORTCUT", "An OS shortcut modifier is physically held.");
       if (buttons.size) {
         const point = nativeBinding().getMousePos();
@@ -57,11 +57,11 @@ const arm = () => {
     }
   }, 16);
 };
-const scope = () => {
+const scope = (keyboardFocus = false) => {
   if (!current) throw createNativeError("NATIVE_PAGE_REQUIRED", "Native input requires a verified foreground webpage.");
   current.signal.throwIfAborted();
   if (revoked.has(current.page.observation)) throw createNativeError("NATIVE_PAGE_CHANGED", "Take a fresh snapshot before continuing native input.");
-  current.surface.verify();
+  current.surface.verify(undefined, keyboardFocus);
   if (blockedModifier(current.surface)) throw createNativeError("NATIVE_PAGE_SHORTCUT", "An OS shortcut modifier is physically held.");
   return current;
 };
@@ -83,8 +83,8 @@ export const nativePointerInsidePage = (point: { x: number; y: number }) => insi
 const controls = new Set(["control", "right_control", ...(process.platform === "darwin" ? ["meta", "right_meta", "cmd", "right_cmd"] : [])]);
 const shifts = new Set(["shift", "right_shift"]);
 const allowedControlKeys = new Set(["a", "c", "v", "x", "z", "y", "home", "end", "left", "right", "up", "down", "backspace", "delete"]);
-export const assertNativePageKeys = (keys: readonly string[], text = false) => {
-  scope();
+export const assertNativePageKeys = (keys: readonly string[], text = false, keyboardFocus = true) => {
+  scope(keyboardFocus);
   const combined = new Set([...held, ...keys, ...(current?.surface.keys?.() || [])]);
   const modifiers = [...combined].filter((key) => controls.has(key) || shifts.has(key));
   const ordinary = [...combined].filter((key) => !modifiers.includes(key));
@@ -99,7 +99,7 @@ export const assertNativePageKeys = (keys: readonly string[], text = false) => {
     throw createNativeError("NATIVE_PAGE_SHORTCUT", "This key or shortcut can leave the webpage. Use programmatic browser actions instead.");
 };
 export const assertNativePageWheel = () => {
-  assertNativePageKeys([]);
+  assertNativePageKeys([], false, false);
   if ([...held, ...(current?.surface.keys?.() || [])].some((key) => controls.has(key)))
     throw createNativeError("NATIVE_PAGE_SHORTCUT", "Modified native scrolling can change browser zoom. Use programmatic zoom instead.");
 };
@@ -113,6 +113,7 @@ export const nativePageButtonReleased = (button: string) => {
 };
 
 export const withNativePage = async <T>(page: NativePage | undefined, signal: AbortSignal, owner: object, failed: (error: Error) => void, run: () => Promise<T>) => {
+  if (!page) throw createNativeError("NATIVE_PAGE_REQUIRED", "The extension did not supply webpage context. Reload the extension and restart the MCP connection after rebuilding both devices.");
   if (!page?.focused || !page.title || ![page.width, page.height, page.zoom].every((value) => Number.isFinite(value) && value > 0))
     throw createNativeError("NATIVE_PAGE_REQUIRED", "Native input requires a focused, measurable webpage.");
   if (revoked.has(page.observation)) throw createNativeError("NATIVE_PAGE_CHANGED", "Take a fresh snapshot before continuing native input.");

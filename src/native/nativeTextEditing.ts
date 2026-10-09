@@ -11,7 +11,7 @@ import { typeNativeText } from "./nativeKeyboard.js";
 const shortcut = (...keys: ReturnType<typeof resolveKey>[]) => tapNativeKeys(keys);
 const selectAll = () => shortcut(platformModifier(), resolveKey("A"));
 const focusTargetActions = new Set([
-  "blur", "clear", "setValue", "appendText", "insertText", "deleteText",
+  "clear", "setValue", "appendText", "insertText", "deleteText",
   "contentEditableInsert", "contentEditableDelete", "selectAll", "selectRange", "undo", "redo",
 ]);
 const clearValue = async () => {
@@ -68,7 +68,7 @@ export const executeNativeTextEditing = async (
     ? nativeInputCount(request.params?.count, 1, "Native delete count", 0) : 0;
   const triggerNames = ["clear", "setValue"].includes(request.action) ? ["A", "Backspace"]
     : request.action === "appendText" ? ["End"] : request.action === "selectRange" ? ["Home", "Right"]
-      : ["deleteText", "contentEditableDelete"].includes(request.action) ? [] : ["blur", "selectAll"].includes(request.action) ? [request.action === "blur" ? "Tab" : "A"]
+      : ["deleteText", "contentEditableDelete"].includes(request.action) ? [] : request.action === "selectAll" ? ["A"]
         : ["undo", "redo"].includes(request.action) ? ["Z"] : [];
   triggerNames.map(resolveKey).forEach(assertNativeKeyAvailable);
   if (["deleteText", "contentEditableDelete"].includes(request.action)) assertNativeKeyAvailable(deletionKey);
@@ -85,7 +85,6 @@ export const executeNativeTextEditing = async (
     case "focus":
       if (!targetPoint) throw createNativeError("NATIVE_COORDINATES_REQUIRED", "Focus requires screen coordinates.");
       return executeNativePointerClick(request, signal);
-    case "blur": await tapNativeKeys([resolveKey("Tab")]); return { blurred: true };
     case "clear": await clearValue(); return { cleared: true };
     case "setValue": await clearValue(); break;
     case "appendText": await shortcut(platformModifier(), resolveKey("End")); break;

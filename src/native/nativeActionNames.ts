@@ -15,7 +15,7 @@ export const keyboardActions = new Set([
   "keyDown", "keyUp", "press", "type", "typeSlowly", "holdKey", "releaseKey", "repeatKey", "shortcut",
 ]);
 export const textActions = new Set([
-  "focus", "blur", "clear", "setValue", "appendText", "replaceText", "insertText", "deleteText",
+  "focus", "clear", "setValue", "appendText", "replaceText", "insertText", "deleteText",
   "selectAll", "selectRange", "contentEditableInsert", "contentEditableDelete", "undo", "redo",
 ]);
 export const clipboardActions = new Set(["copy", "cut", "paste", "readClipboard", "writeClipboard"]);

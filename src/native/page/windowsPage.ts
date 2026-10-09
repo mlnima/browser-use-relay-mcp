@@ -96,11 +96,11 @@ export const openWindowsPage = (page: NativePage): NativePageSurface => {
   };
 };
 
-export const windowsMousePosition = () => {
+export const windowsMousePosition = () => physical(() => {
   const point = { x: 0, y: 0 };
   if (!physicalPosition(point)) return fail("Windows cursor position is unavailable.");
   return point;
-};
-export const moveWindowsMouse = (point: { x: number; y: number }) => {
+});
+export const moveWindowsMouse = (point: { x: number; y: number }) => physical(() => {
   if (!setPhysicalPosition(point.x, point.y)) return fail("Windows cursor movement failed.");
-};
+});

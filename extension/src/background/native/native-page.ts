@@ -1,10 +1,22 @@
 import type { ActionRequest, NativePage } from "../../../../src/types/action.js";
 import type { JsonValue } from "../../../../src/types/json.js";
-import { nativePageActions } from "../../../../src/native/nativeActionNames.js";
+import { nativePageActions, scrollActions } from "../../../../src/native/nativeActionNames.js";
 import { resolveTabId } from "../actions/tab";
 import { resolvePoint } from "../debugger/resolve-point";
 
-const observed = new Map<number, { fingerprint: string; id: string }>();
+const observed = new Map<number, { fingerprint: string; id: string; windowId: number }>();
+chrome.windows.onFocusChanged.addListener((id) => {
+  for (const [tabId, page] of observed) if (page.windowId !== id) observed.delete(tabId);
+});
+chrome.windows.onBoundsChanged.addListener((window) => {
+  for (const [tabId, page] of observed) if (page.windowId === window.id) observed.delete(tabId);
+});
+chrome.tabs.onActivated.addListener((info) => {
+  for (const [tabId, page] of observed) if (page.windowId === info.windowId && tabId !== info.tabId) observed.delete(tabId);
+});
+chrome.tabs.onZoomChange.addListener(({ tabId }) => observed.delete(tabId));
+chrome.tabs.onUpdated.addListener((tabId, change) => { if (change.url || change.status === "loading") observed.delete(tabId); });
+chrome.tabs.onRemoved.addListener((tabId) => observed.delete(tabId));
 const fingerprint = (page: NativePage, window: chrome.windows.Window) => JSON.stringify([
   page.url, page.width, page.height, page.zoom, page.windowId, window.left, window.top, window.width, window.height, window.state,
 ]);
@@ -28,7 +40,7 @@ export const withNativePageObservation = async <T>(tabId: number, read: () => Pr
   const after = await readPage(tabId).catch(() => undefined);
   observed.delete(tabId);
   if (before && after && before.fingerprint === after.fingerprint)
-    observed.set(tabId, { fingerprint: after.fingerprint, id: crypto.randomUUID() });
+    observed.set(tabId, { fingerprint: after.fingerprint, id: crypto.randomUUID(), windowId: after.page.windowId });
   return result;
 };
 export const prepareNativePage = async (request: ActionRequest, signal: AbortSignal) => {
@@ -39,14 +51,15 @@ export const prepareNativePage = async (request: ActionRequest, signal: AbortSig
   if (!state.page.focused) throw new Error("The requested webpage has lost focus. Take a fresh snapshot before native input.");
   if (observed.get(tabId)?.fingerprint !== state.fingerprint) throw new Error("The webpage moved, resized, zoomed, or navigated. Take a fresh snapshot before native input.");
   const target = request.target;
-  const coordinates = { ...target, x: target?.x ?? request.params?.x as number | undefined,
-    y: target?.y ?? request.params?.y as number | undefined };
+  const parameterPoint = !scrollActions.has(request.action);
+  const coordinates = { ...target, x: target?.x ?? (parameterPoint ? request.params?.x as number | undefined : undefined),
+    y: target?.y ?? (parameterPoint ? request.params?.y as number | undefined : undefined) };
   const webTarget = target?.elementId !== undefined || target?.locator !== undefined ||
     coordinates.x !== undefined && (target?.frameId !== undefined || target?.documentId !== undefined);
   const point = webTarget ? await resolvePoint({ ...request, target: coordinates }, tabId, signal)
     : coordinates.x !== undefined || coordinates.y !== undefined ? { x: coordinates.x!, y: coordinates.y! } : undefined;
   const params = { ...request.params };
-  if (point) { delete params.x; delete params.y; }
+  if (point && parameterPoint) { delete params.x; delete params.y; }
   for (const prefix of ["from", "to"] as const) {
     if (params[`${prefix}X`] === undefined && params[`${prefix}Y`] === undefined) continue;
     const point = await resolvePoint({ ...request, target: { tabId, frameId: target?.frameId, documentId: target?.documentId,

@@ -29,6 +29,7 @@ export const runNativeHost = async () => {
     disconnect: actions.onSocketClose,
     clients: state.connected,
     error: state.failed,
+    inputEngine: () => state.current().settings.inputEngine || "auto",
   });
   let configureQueue = Promise.resolve();
 
@@ -38,6 +39,8 @@ export const runNativeHost = async () => {
       const current = state.current();
       if (current.listening && settings.enabled && current.settings.externalAccess === settings.externalAccess && current.settings.port === settings.port) {
         state.configured(generation, settings, current.addresses, true);
+        if (current.settings.inputEngine !== settings.inputEngine) await actions.releaseInput();
+        transport.broadcast({ type: "event", name: "relay.inputEngine", data: { inputEngine: settings.inputEngine || "auto" } });
         return;
       }
       await transport.stop();

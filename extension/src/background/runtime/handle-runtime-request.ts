@@ -1,4 +1,5 @@
 import { MAX_TIMER_MS } from "../../../../src/protocol/limits.js";
+import { isInputEngine } from "../../../../src/protocol/actionCatalog.js";
 import type { RuntimeRequest, RuntimeResponse } from "../../shared/messages";
 import { runtimeMessage } from "../../shared/messages";
 import type { SettingsIntent } from "../state/state-store";
@@ -28,6 +29,8 @@ export const createRuntimeRequestHandler = (configure: Configure, quiesce: Quies
           throw new Error(`Action delays must be whole milliseconds from 0 to ${MAX_TIMER_MS}, with maximum at least minimum.`);
         }
       }
+      if (request.type === runtimeMessage.setInputEngine && !isInputEngine(request.inputEngine))
+        throw new Error("Input engine must be auto, browser, or native.");
       const patch = request.type === runtimeMessage.setEnabled
         ? { enabled: request.enabled }
         : request.type === runtimeMessage.setExternalAccess
@@ -36,12 +39,12 @@ export const createRuntimeRequestHandler = (configure: Configure, quiesce: Quies
             ? { port: request.port }
             : request.type === runtimeMessage.applyActionDelay
               ? { actionDelayMinMs: request.actionDelayMinMs, actionDelayMaxMs: request.actionDelayMaxMs }
-              : {};
+              : request.type === runtimeMessage.setInputEngine ? { inputEngine: request.inputEngine } : {};
       const quiesceRequired = getState().settings.enabled && (request.type === runtimeMessage.setExternalAccess ||
         request.type === runtimeMessage.applyPort || request.type === runtimeMessage.setEnabled && !request.enabled);
       const intent = await updateSettings(patch, quiesceRequired ? quiesce : undefined);
       const resetSession = intent.settings.enabled &&
-        (request.type === runtimeMessage.setExternalAccess || request.type === runtimeMessage.applyPort);
+        (request.type === runtimeMessage.setExternalAccess || request.type === runtimeMessage.applyPort || request.type === runtimeMessage.setInputEngine);
       await configure(intent, resetSession && !quiesceRequired);
       return { ok: true, state: getState() };
     } catch (error) {

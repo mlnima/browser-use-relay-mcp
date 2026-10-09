@@ -1,8 +1,8 @@
 import type WebSocket from "ws";
-import { getActionDefinition } from "../protocol/actionCatalog.js";
+import { getActionDefinition, resolveInputAction } from "../protocol/actionCatalog.js";
 import type { ActionRequest, ActionResult } from "../types/action.js";
 import type { NativeMessage } from "../types/relay.js";
-import type { ActionDelaySettings } from "../types/settings.js";
+import type { ActionDelaySettings, InputEngineSettings } from "../types/settings.js";
 import { failedActionResult } from "./actionResult.js";
 import { DEFAULT_ACTION_TIMEOUT_MS } from "./constants.js";
 import { createForwardedActions } from "./createForwardedActions.js";
@@ -15,7 +15,7 @@ import { isDownloadTransferRequest } from "./nativeDownloadTransfer.js";
 import { isUploadTransferRequest } from "./nativeUploadTransfer.js";
 import { sendRelayMessage } from "./relaySend.js";
 const extensionOwner = {};
-export const createActionCoordinator = (write: (message: NativeMessage) => void, getDelaySettings: () => ActionDelaySettings) => {
+export const createActionCoordinator = (write: (message: NativeMessage) => void, getDelaySettings: () => ActionDelaySettings & InputEngineSettings) => {
   const runner = createNativeRunner();
   let lastActionAt = -Infinity;
   let dispatchQueue = Promise.resolve();
@@ -42,6 +42,7 @@ export const createActionCoordinator = (write: (message: NativeMessage) => void,
       for (let remaining = lastActionAt + interval - performance.now(); remaining > 0; remaining = lastActionAt + interval - performance.now())
         await abortableDelay(remaining, signal);
       signal.throwIfAborted();
+      resolveInputAction(request, getDelaySettings().inputEngine);
       if (!dispatch()) return false;
       lastActionAt = performance.now();
       return true;
@@ -78,6 +79,12 @@ export const createActionCoordinator = (write: (message: NativeMessage) => void,
     }).catch((error: unknown) => cancel("ACTION_FAILURE", error instanceof Error ? error.message : "Action dispatch failed."));
   };
   const onRelayAction = (socket: WebSocket, request: ActionRequest) => {
+    try {
+      request = resolveInputAction(request, getDelaySettings().inputEngine);
+    } catch (error) {
+      sendFailure(socket, request, "INPUT_ENGINE_RESTRICTED", error instanceof Error ? error.message : "The input engine is restricted.");
+      return;
+    }
     if (busy(socket, request.id)) {
       sendFailure(socket, request, "DUPLICATE_ACTION_ID", `Action id "${request.id}" is already active.`);
       return;
@@ -105,7 +112,7 @@ export const createActionCoordinator = (write: (message: NativeMessage) => void,
     } else queueAction(socket, request);
   };
   const onExtensionAction = (request: ActionRequest) =>
-    handleExtensionNativeAction(write, request, runner, forwarded, extensionOwner);
+    handleExtensionNativeAction(write, request, runner, forwarded, extensionOwner, getDelaySettings().inputEngine);
   const onRelayCancel = async (socket: WebSocket, id: string, reason?: string) => {
     const message = reason || "The MCP client cancelled the action.";
     waiting.get(socket)?.get(id)?.("ACTION_CANCELLED", message);
@@ -136,6 +143,7 @@ export const createActionCoordinator = (write: (message: NativeMessage) => void,
     onExtensionAction,
     onExtensionResult: (result: ActionResult) => forwarded.complete(result.id, result),
     onExtensionCancel,
+    releaseInput: () => runner.releaseInput().then(resetNativeDragState),
     close,
   };
 };

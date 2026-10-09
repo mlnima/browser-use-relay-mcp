@@ -2,6 +2,7 @@ import { errorDetailsStringsFit } from "../protocol/actionError.js";
 import { MAX_RELAY_ERROR_CHARACTERS, MAX_RELAY_IDENTIFIER_CHARACTERS, MAX_TIMER_MS } from "../protocol/limits.js";
 import type { ActionError, ActionLocator, ActionRequest, ActionResult, ActionTarget } from "../types/action.js";
 import { isJsonValue, isObjectRecord } from "./jsonValueValidation.js";
+import { isInputEngine } from "../protocol/actionCatalog.js";
 
 const engines = new Set(["auto", "browser", "dom", "native"]);
 const resultEngines = new Set(["browser", "dom", "native"]);
@@ -35,6 +36,7 @@ export const isActionRequest = (value: unknown): value is ActionRequest => {
   if (!isObjectRecord(value)) return false;
   return identifier(value.id) && identifier(value.action) &&
     (value.engine === undefined || typeof value.engine === "string" && engines.has(value.engine)) &&
+    (value.inputEngine === undefined || isInputEngine(value.inputEngine)) &&
     (value.target === undefined || isTarget(value.target)) &&
     (value.params === undefined || isObjectRecord(value.params) && isJsonValue(value.params)) &&
     optionalInteger(value.timeoutMs, 1, MAX_TIMER_MS) && optionalInteger(value.retries, 0, 10) &&

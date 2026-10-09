@@ -3,7 +3,7 @@ import { getActionDefinition } from "../../protocol/actionCatalog.js";
 import type { RelayClient } from "../../types/mcp.js";
 import { createActionRequest } from "../createActionRequest.js";
 import { actionResultContent } from "../result.js";
-import { actionInputSchema } from "../schema.js";
+import { createActionInputSchema } from "../schema.js";
 import { imageActionResultContent, snapshotResultContent } from "../snapshotResult.js";
 
 const imageActions = new Set(["captureVisibleTab", "captureViewport", "captureElement"]);
@@ -12,8 +12,8 @@ export const registerActionTool = (server: McpServer, client: RelayClient) => se
   "browser_action",
   {
     title: "Act in browser",
-    description: "Execute one revision-aware human browser action through automatic DOM, browser-input, or native routing.",
-    inputSchema: actionInputSchema,
+    description: "Execute one revision-aware browser action. Mouse and keyboard actions follow the selected input engine; use browser_capabilities for supported actions and parameters.",
+    inputSchema: createActionInputSchema(client.inputEngine()),
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
   },
   async (input, context) => {

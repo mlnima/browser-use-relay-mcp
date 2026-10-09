@@ -1,7 +1,8 @@
 import WebSocket from "ws";
 import type { ActionRequest } from "../../types/action.js";
 import type { RelayClient } from "../../types/mcp.js";
-import type { ActionDelaySettings } from "../../types/settings.js";
+import type { ActionDelaySettings, InputEngine, InputEngineSettings } from "../../types/settings.js";
+import { isInputEngine, resolveInputAction, resolveInputEngine } from "../../protocol/actionCatalog.js";
 import { awaitSignal } from "./awaitSignal.js";
 import { createPendingActions } from "./createPendingActions.js";
 import { createRelayEventBuffer } from "./createRelayEventBuffer.js";
@@ -15,11 +16,24 @@ const retryDelay = (milliseconds: number, signal: AbortSignal) => new Promise<vo
   signal.addEventListener("abort", abort, { once: true });
   if (signal.aborted) abort();
 });
-export const createRelayClient = (url: string, connectTimeoutMs: number, actionTimeoutMs: number, delaySettings: ActionDelaySettings = {}): RelayClient => {
+export const createRelayClient = (url: string, connectTimeoutMs: number, actionTimeoutMs: number, delaySettings: ActionDelaySettings & InputEngineSettings = {}): RelayClient => {
   let socket: WebSocket | undefined; let connecting: Promise<void> | undefined;
   let connectAbort: AbortController | undefined; let closing = false;
   const pending = createPendingActions();
   const eventBuffer = createRelayEventBuffer();
+  let extensionEngine: InputEngine = "auto";
+  const engineListeners = new Set<(engine: InputEngine) => void>();
+  const inputEngine = () => resolveInputEngine(delaySettings.inputEngine, extensionEngine);
+  const onInputEngineChanged = (receive: (engine: InputEngine) => void) => {
+    engineListeners.add(receive);
+    return () => { engineListeners.delete(receive); };
+  };
+  const updateInputEngine = (value: unknown) => {
+    if (!isInputEngine(value)) return;
+    const previous = inputEngine();
+    extensionEngine = value;
+    if (previous !== inputEngine()) engineListeners.forEach((receive) => receive(inputEngine()));
+  };
   const rejectProtocol = (source: WebSocket, message: string) => (pending.rejectSocket(source, message), source.close(1002, "Invalid relay message"));
   const receive = (data: WebSocket.RawData, source: WebSocket, binary: boolean) => {
     if (binary) return rejectProtocol(source, "Relay returned a binary protocol message.");
@@ -30,6 +44,8 @@ export const createRelayClient = (url: string, connectTimeoutMs: number, actionT
       return rejectProtocol(source, "Relay returned malformed JSON.");
     }
     if (!message) return rejectProtocol(source, "Relay returned an invalid protocol message.");
+    if (message.type === "event" && ["relay.ready", "relay.inputEngine"].includes(message.name) &&
+      message.data && typeof message.data === "object" && "inputEngine" in message.data) updateInputEngine(message.data.inputEngine);
     if (message.type === "result") pending.take(message.result.id)?.resolve(message.result);
     if (message.type === "event") eventBuffer.add(message);
     if (message.type === "event" && message.name === "relay.error") rejectProtocol(source, "Relay rejected a protocol message.");
@@ -78,8 +94,9 @@ export const createRelayClient = (url: string, connectTimeoutMs: number, actionT
     signal?.throwIfAborted();
     const activeSocket = socket;
     if (activeSocket?.readyState !== WebSocket.OPEN) throw new Error("Relay connection is not open.");
+    const selected = resolveInputAction({ ...request, inputEngine: delaySettings.inputEngine }, extensionEngine);
     return executeRelayAction(activeSocket, pending, {
-      ...request,
+      ...selected,
       actionDelayMinMs: delaySettings.actionDelayMinMs,
       actionDelayMaxMs: delaySettings.actionDelayMaxMs,
     }, actionTimeoutMs, signal);
@@ -101,5 +118,5 @@ export const createRelayClient = (url: string, connectTimeoutMs: number, actionT
     });
   };
   const connect = (signal?: AbortSignal) => (signal?.throwIfAborted(), awaitSignal(connectSocket(), signal));
-  return { connect, execute, events: eventBuffer.read, close };
+  return { connect, execute, inputEngine, onInputEngineChanged, events: eventBuffer.read, close };
 };

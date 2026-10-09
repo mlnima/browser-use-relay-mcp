@@ -1,8 +1,8 @@
-import type { ActionDelaySettings } from "../../../src/types/settings.js";
+import type { ActionDelaySettings, InputEngineSettings } from "../../../src/types/settings.js";
 
 export type RelayStatus = "connected" | "listening" | "connecting" | "disconnected" | "error";
 
-export type ExtensionSettings = ActionDelaySettings & {
+export type ExtensionSettings = ActionDelaySettings & InputEngineSettings & {
   enabled: boolean;
   externalAccess: boolean;
   port?: number;

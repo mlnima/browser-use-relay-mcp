@@ -2,6 +2,8 @@ import * as z from "zod/v4";
 import { MAX_RELAY_IDENTIFIER_CHARACTERS, MAX_TIMER_MS } from "../protocol/limits.js";
 import type { JsonValue } from "../types/json.js";
 import { jsonValueFitsLimits } from "./jsonValueLimits.js";
+import { getInputActionCatalog, isInputAction } from "../protocol/actionCatalog.js";
+import type { InputEngine } from "../types/settings.js";
 
 export const engineSchema = z.enum(["auto", "browser", "dom", "native"]);
 
@@ -48,3 +50,31 @@ export const actionFields = {
 };
 
 export const actionInputSchema = z.strictObject(actionFields);
+
+export const createActionSchema = (inputEngine: InputEngine) => {
+  const catalog = getInputActionCatalog(inputEngine);
+  const inputs = catalog.filter(isInputAction).map(({ name }) => name);
+  const other = catalog.filter((definition) => !isInputAction(definition)).map(({ name }) => name);
+  return inputEngine === "auto" ? actionInputSchema : z.union([
+    z.strictObject({
+      ...actionFields,
+      action: z.enum(inputs),
+      engine: z.literal(inputEngine).optional().describe(`Input actions use only ${inputEngine}.`),
+      target: inputEngine === "native" ? z.strictObject({ x: z.number(), y: z.number() }).optional()
+        .describe("OS-screen coordinates only; omit for current focus or pointer position.") : targetSchema,
+    }),
+    z.strictObject({ ...actionFields, action: z.enum(other) }),
+  ]);
+};
+
+export const createActionInputSchema = (inputEngine: InputEngine) => {
+  const schema = createActionSchema(inputEngine);
+  const standard = schema["~standard"];
+  return { "~standard": {
+    ...standard,
+    jsonSchema: {
+      input: (options: Parameters<typeof standard.jsonSchema.input>[0]) => ({ type: "object", ...standard.jsonSchema.input(options) }),
+      output: (options: Parameters<typeof standard.jsonSchema.output>[0]) => ({ type: "object", ...standard.jsonSchema.output(options) }),
+    },
+  } };
+};

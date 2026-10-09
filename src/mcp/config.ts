@@ -1,5 +1,6 @@
 import type { McpConfiguration } from "../types/mcp.js";
 import { MAX_TIMER_MS } from "../protocol/limits.js";
+import { isInputEngine } from "../protocol/actionCatalog.js";
 
 const readArgument = (name: string) => {
   const index = process.argv.indexOf(name);
@@ -27,10 +28,13 @@ export const resolveMcpConfiguration = (): McpConfiguration => {
   if (parsed.hash) throw new Error("The relay URL cannot contain a fragment.");
   const actionDelayMinMs = readDelay(readArgument("--action-delay-min-ms") ?? process.env.BROWSER_RELAY_ACTION_DELAY_MIN_MS);
   const actionDelayMaxMs = readDelay(readArgument("--action-delay-max-ms") ?? process.env.BROWSER_RELAY_ACTION_DELAY_MAX_MS);
+  const inputEngine = process.env.BROWSER_RELAY_INPUT_ENGINE || "auto";
+  if (!isInputEngine(inputEngine)) throw new Error("BROWSER_RELAY_INPUT_ENGINE must be auto, browser, or native.");
   if (actionDelayMinMs !== undefined && actionDelayMaxMs !== undefined && actionDelayMaxMs < actionDelayMinMs)
     throw new Error("Maximum action delay must be greater than or equal to minimum action delay.");
   return {
     relayUrl: parsed.href,
+    inputEngine,
     actionDelayMinMs,
     actionDelayMaxMs,
     connectTimeoutMs: readPositiveNumber(process.env.BROWSER_RELAY_CONNECT_TIMEOUT_MS, 10_000),

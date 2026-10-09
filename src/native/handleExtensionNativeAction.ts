@@ -1,7 +1,8 @@
 import WebSocket from "ws";
 import type { ActionRequest } from "../types/action.js";
 import type { NativeMessage } from "../types/relay.js";
-import { getActionDefinition } from "../protocol/actionCatalog.js";
+import { getActionDefinition, resolveInputAction } from "../protocol/actionCatalog.js";
+import type { InputEngine } from "../types/settings.js";
 import { failedActionResult } from "./actionResult.js";
 import type { createForwardedActions } from "./createForwardedActions.js";
 import type { createNativeRunner } from "./createNativeRunner.js";
@@ -16,8 +17,15 @@ export const handleExtensionNativeAction = (
   runner: Runner,
   forwarded: Forwarded,
   extensionOwner: object,
+  inputEngine?: InputEngine,
 ) => {
   const reply = extensionActionReply(write, request);
+  try {
+    request = resolveInputAction({ ...request, engine: "native" }, inputEngine);
+  } catch (error) {
+    reply(failedActionResult(request, "INPUT_ENGINE_RESTRICTED", error instanceof Error ? error.message : "The input engine is restricted."));
+    return;
+  }
   const forwardedOwner = forwarded.ownerForExtensionAction(request.id);
   if (forwarded.isForwardedExtensionAction(request.id) &&
     (!forwardedOwner || forwardedOwner.readyState !== WebSocket.OPEN)) {

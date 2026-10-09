@@ -5,11 +5,18 @@ import { MAX_BATCH_ACTIONS, MAX_BATCH_IMAGES, MAX_BATCH_RESULT_BYTES, MAX_BATCH_
 import type { RelayClient } from "../../types/mcp.js";
 import { createActionRequest } from "../createActionRequest.js";
 import { resultContent } from "../result.js";
-import { actionInputSchema } from "../schema.js";
+import { createActionSchema } from "../schema.js";
+import type { InputEngine } from "../../types/settings.js";
 import { compactImageActionResult, compactSnapshotActionResult } from "../snapshotResult.js";
 
 type ImageContent = { type: "image"; mimeType: string; data: string };
 const imageActions = new Set(["captureVisibleTab", "captureViewport", "captureElement"]);
+export const createBatchInputSchema = (inputEngine: InputEngine) => {
+  return z.strictObject({
+    actions: z.array(createActionSchema(inputEngine)).min(1).max(MAX_BATCH_ACTIONS),
+    stopOnError: z.boolean().optional(),
+  });
+};
 const batchResultContent = (data: Parameters<typeof resultContent>[0], images: ImageContent[]) => {
   const result = resultContent(data);
   return { ...result, content: [...result.content, ...images] };
@@ -20,7 +27,7 @@ export const registerBatchTool = (server: McpServer, client: RelayClient) => ser
   {
     title: "Run browser action sequence",
     description: "Execute an ordered sequence against one selected browser, stopping on failure by default.",
-    inputSchema: z.strictObject({ actions: z.array(actionInputSchema).min(1).max(MAX_BATCH_ACTIONS), stopOnError: z.boolean().optional() }),
+    inputSchema: createBatchInputSchema(client.inputEngine()),
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
   },
   async (input, context) => {

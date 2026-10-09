@@ -5,12 +5,14 @@ import type { ActionRequest } from "../types/action.js";
 import { MAX_CANCEL_REASON_LENGTH } from "../protocol/limits.js";
 import { isActionRequest } from "./actionValidation.js";
 import { sendRelayMessage } from "./relaySend.js";
+import type { InputEngine } from "../types/settings.js";
 
 type Session = { ready: boolean };
 type RelayHandlers = {
   action: (socket: WebSocket, request: ActionRequest) => void;
   cancel: (socket: WebSocket, id: string, reason?: string) => void;
   ready: () => string | undefined;
+  inputEngine: () => InputEngine;
 };
 
 const relayError = (socket: WebSocket, code: string, message: string) =>
@@ -64,7 +66,7 @@ export const handleRelayMessage = (
     sendRelayMessage(socket, {
       type: "event",
       name: "relay.ready",
-      data: { protocolVersion: RELAY_PROTOCOL_VERSION, nativeHost: NATIVE_HOST_NAME },
+      data: { protocolVersion: RELAY_PROTOCOL_VERSION, nativeHost: NATIVE_HOST_NAME, inputEngine: handlers.inputEngine() },
     });
     return;
   }

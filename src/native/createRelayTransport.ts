@@ -6,6 +6,7 @@ import { handleRelayMessage } from "./relayMessage.js";
 import { broadcastRelayMessage } from "./relaySend.js";
 import { RELAY_HANDSHAKE_TIMEOUT_MS } from "./constants.js";
 import { startRelayHeartbeat } from "./relayHeartbeat.js";
+import type { InputEngine } from "../types/settings.js";
 
 type TransportHandlers = {
   action: (socket: WebSocket, request: ActionRequest) => void;
@@ -13,6 +14,7 @@ type TransportHandlers = {
   disconnect: (socket: WebSocket, remainingClients: number) => void | Promise<void>;
   clients: (count: number) => void;
   error: (message: string, stopped?: boolean) => void;
+  inputEngine: () => InputEngine;
 };
 
 export const createRelayTransport = (handlers: TransportHandlers) => {
@@ -37,6 +39,7 @@ export const createRelayTransport = (handlers: TransportHandlers) => {
     socket.on("message", (data, binary) => handleRelayMessage(socket, session, data, binary, {
       action: (target, request) => admitting && handlers.action(target, request),
       cancel: handlers.cancel,
+      inputEngine: handlers.inputEngine,
       ready: () => {
         pending.delete(socket);
         if (!admitting) return "The relay is stopping.";

@@ -9,6 +9,9 @@ import { pointerActions } from "./actions/pointerActions.js";
 import { scrollTouchActions } from "./actions/scrollTouchActions.js";
 import { stateNetworkActions } from "./actions/stateNetworkActions.js";
 import { waitingActions } from "./actions/waitingActions.js";
+import type { ActionDefinition } from "./actionDefinition.js";
+import type { ActionRequest } from "../types/action.js";
+import type { InputEngine } from "../types/settings.js";
 
 export const actionCatalog = [
   ...pointerActions,
@@ -26,3 +29,37 @@ export const actionCatalog = [
 
 export const getActionDefinition = (name: string) =>
   actionCatalog.find((definition) => definition.name === name);
+
+const inputCategories = new Set(["pointer", "scroll", "keyboard", "text", "form", "drag", "dom", "events", "nativeUI"]);
+const inputCompounds = new Set([
+  "clickElement", "fillField", "chooseOption", "dragElement", "findAndClick", "findAndFill",
+  "scrollUntilFound", "clickUntilGone", "submitAndWait", "copy", "cut", "paste",
+]);
+
+export const isInputEngine = (value: unknown): value is InputEngine =>
+  value === "auto" || value === "browser" || value === "native";
+
+export const resolveInputEngine = (configured?: InputEngine, extension?: InputEngine): InputEngine =>
+  configured && configured !== "auto" ? configured : extension || "auto";
+
+export const isInputAction = (definition?: ActionDefinition) => Boolean(definition && !definition.readOnly &&
+  (inputCategories.has(definition.category) || inputCompounds.has(definition.name)));
+
+export const getInputActionCatalog = (inputEngine: InputEngine): readonly ActionDefinition[] =>
+  inputEngine === "auto" ? actionCatalog : actionCatalog.flatMap((definition): ActionDefinition[] =>
+    !isInputAction(definition) ? [definition] : definition.engines.some((engine) => engine === inputEngine)
+      ? [{ ...definition, engines: [inputEngine], description: inputEngine === "native"
+        ? definition.description.replace("viewport coordinates", "OS-screen coordinates").replace("browser input", "OS input")
+          .replace("Move the pointer to an element.", "Move the pointer to OS-screen coordinates.")
+        : definition.description }] : []);
+
+export const resolveInputAction = (request: ActionRequest, extension?: InputEngine): ActionRequest => {
+  const inputEngine = resolveInputEngine(request.inputEngine, extension);
+  const definition = getActionDefinition(request.action);
+  if (inputEngine === "auto" || !isInputAction(definition)) return request;
+  if (!definition?.engines.some((engine) => engine === inputEngine))
+    throw new Error(`Action "${request.action}" is unavailable with ${inputEngine} input.`);
+  if (request.engine && request.engine !== "auto" && request.engine !== inputEngine)
+    throw new Error(`Action "${request.action}" requires the ${inputEngine} input engine.`);
+  return { ...request, engine: inputEngine };
+};

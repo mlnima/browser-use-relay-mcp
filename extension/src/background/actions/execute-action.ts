@@ -1,4 +1,4 @@
-import { getActionDefinition } from "../../../../src/protocol/actionCatalog.js";
+import { getActionDefinition, resolveInputAction } from "../../../../src/protocol/actionCatalog.js";
 import { MAX_TIMER_MS } from "../../../../src/protocol/limits.js";
 import type { ActionEngine, ActionRequest, ActionResult } from "../../../../src/types/action.js";
 import type { JsonValue } from "../../../../src/types/json.js";
@@ -49,6 +49,15 @@ const executeEngine = async (engine: Exclude<ActionEngine, "auto">, request: Act
 
 export const executeActionRequest = async (request: ActionRequest, signal: AbortSignal, nativeExecute?: NativeExecute): Promise<ActionResult> => {
   const started = performance.now();
+  try {
+    request = resolveInputAction(request, getState().settings.inputEngine);
+  } catch (error) {
+    return {
+      id: request.id, success: false, engine: request.engine === "native" ? "native" : "browser",
+      error: { code: "INPUT_ENGINE_RESTRICTED", message: error instanceof Error ? error.message : "The input engine is restricted.", retryable: false },
+      durationMs: performance.now() - started,
+    };
+  }
   const definition = getActionDefinition(request.action);
   const requested = request.engine || "auto";
   const hasWebTarget = Boolean(request.target && Object.values(request.target).some((value) => value !== undefined));
@@ -60,7 +69,9 @@ export const executeActionRequest = async (request: ActionRequest, signal: Abort
     : [requested];
   let lastError = new Error(`Unknown browser action: ${request.action}`);
   let lastEngine: Exclude<ActionEngine, "auto"> = "browser";
-  const run = (nestedRequest: ActionRequest, nestedSignal: AbortSignal) => executeActionRequest(nestedRequest, nestedSignal, nativeExecute);
+  const run = (nestedRequest: ActionRequest, nestedSignal: AbortSignal) => executeActionRequest(
+    { ...nestedRequest, inputEngine: request.inputEngine }, nestedSignal, nativeExecute,
+  );
   const missingValue = ["fillField", "findAndFill"].includes(request.action) && !Object.prototype.hasOwnProperty.call(request.params || {}, "value");
   const unsupportedEngine = requested !== "auto" && !definition?.engines.some((engine) => engine === requested);
   if (!getState().settings.enabled) lastError = new Error("Browser control is disabled in the extension.");

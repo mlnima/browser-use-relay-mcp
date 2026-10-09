@@ -1,4 +1,4 @@
-import type { ActionDelaySettings } from "../../../src/types/settings.js";
+import type { ActionDelaySettings, InputEngine } from "../../../src/types/settings.js";
 import type { ExtensionState } from "./model";
 
 export const runtimeMessage = {
@@ -7,6 +7,7 @@ export const runtimeMessage = {
   setExternalAccess: "relay.setExternalAccess",
   applyPort: "relay.applyPort",
   applyActionDelay: "relay.applyActionDelay",
+  setInputEngine: "relay.setInputEngine",
   openOptions: "relay.openOptions",
   stateChanged: "relay.stateChanged",
 } as const;
@@ -17,6 +18,7 @@ export type RuntimeRequest =
   | { type: typeof runtimeMessage.setExternalAccess; enabled: boolean }
   | { type: typeof runtimeMessage.applyPort; port: number }
   | ({ type: typeof runtimeMessage.applyActionDelay } & ActionDelaySettings)
+  | { type: typeof runtimeMessage.setInputEngine; inputEngine: InputEngine }
   | { type: typeof runtimeMessage.openOptions };
 
 export type RuntimeResponse =

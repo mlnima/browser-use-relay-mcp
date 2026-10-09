@@ -6,6 +6,7 @@ import { runtimeMessage } from "../shared/messages";
 import { StatusBadge } from "../shared/status-badge";
 import { Toggle } from "../shared/toggle";
 import { useExtensionState } from "../shared/use-extension-state";
+import type { InputEngine } from "../../../src/types/settings.js";
 
 export const Popup = () => {
   const { state, error, loading, pending, refresh, update } = useExtensionState();
@@ -59,6 +60,24 @@ export const Popup = () => {
                 {state.statusMessage}
               </p>
             ) : null}
+          </section>
+
+          <section className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
+            <label className="mb-2 block text-sm font-medium text-zinc-100" htmlFor="input-engine">Input engine</label>
+            <select
+              className="h-10 w-full rounded-xl border border-zinc-800 bg-black px-3 text-sm text-zinc-100 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+              disabled={pending}
+              id="input-engine"
+              onChange={(event) => void update({ type: runtimeMessage.setInputEngine, inputEngine: event.target.value as InputEngine })}
+              value={state.settings.inputEngine}
+            >
+              <option value="auto">Auto</option>
+              <option value="browser">Browser</option>
+              <option value="native">Native</option>
+            </select>
+            <p className="mt-2 text-xs leading-5 text-zinc-500">
+              Controls mouse and keyboard actions. Auto lets the agent choose; Browser uses browser input; Native uses the OS mouse and keyboard instead of page scripting. A fixed MCP setting takes precedence.
+            </p>
           </section>
 
           <section className="space-y-2">

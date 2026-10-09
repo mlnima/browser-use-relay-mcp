@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
-import { actionCatalog } from "../../protocol/actionCatalog.js";
+import { getInputActionCatalog, isInputAction } from "../../protocol/actionCatalog.js";
+import type { InputEngine } from "../../types/settings.js";
 import { RELAY_PROTOCOL_VERSION } from "../../protocol/version.js";
 import { actionParameterOverrides } from "../../protocol/parameterOverrides.js";
 import { categoryParameterGuides, targetGuide } from "../../protocol/parameterGuides.js";
@@ -37,19 +38,43 @@ const selectEntries = (record: Record<string, string>, keys: Set<string>) => Obj
   Object.entries(record).filter(([key]) => keys.has(key)),
 );
 
-const capabilityCatalog = (input: { actions?: string[]; categories?: string[]; detail?: "summary" | "full" }) => {
+const capabilityCatalog = (input: { actions?: string[]; categories?: string[]; detail?: "summary" | "full" }, inputEngine: InputEngine) => {
   const actionNames = new Set(input.actions || []);
   const categories = new Set(input.categories || []);
+  const catalog = getInputActionCatalog(inputEngine);
   const filtered = actionNames.size || categories.size
-    ? actionCatalog.filter((action) => actionNames.has(action.name) || categories.has(action.category))
-    : actionCatalog;
+    ? catalog.filter((action) => actionNames.has(action.name) || categories.has(action.category))
+    : catalog;
   const detailed = input.detail === "full" || actionNames.size > 0 || categories.size > 0;
   const selectedCategories = new Set(filtered.map((action) => action.category));
   const selectedActions = new Set(filtered.map((action) => action.name));
+  const guides = selectEntries(categoryParameterGuides, selectedCategories);
+  const overrides = selectEntries(actionParameterOverrides, selectedActions);
+  if (inputEngine !== "auto") {
+    const coordinates = inputEngine === "native" ? "OS-screen coordinates; no element IDs, locators, or tab/frame IDs" : "frame viewport coordinates or a revisioned element target";
+    const inputGuide = `Only the ${inputEngine} engine is available for input. Use ${coordinates}. Keyboard actions without a target use current focus.`;
+    for (const definition of filtered.filter(isInputAction)) {
+      guides[definition.category] = inputGuide;
+      if (overrides[definition.name] && definition.engines.length > 1) overrides[definition.name] = inputGuide;
+    }
+    overrides.fillField && (overrides.fillField += " params.value is required.");
+    overrides.findAndFill && (overrides.findAndFill += " params.value is required.");
+    overrides.chooseOption && (overrides.chooseOption += " params.value selects an option by typing and Enter.");
+    overrides.selectRange && (overrides.selectRange += " params.start/end are integers from 0 to 1000.");
+    overrides.dragElement && (overrides.dragElement += " Supply params.destination x/y or toX/toY.");
+    overrides.scrollElement && (overrides.scrollElement += " Supply nonzero params.x/y deltas.");
+    guides.pointer && (guides.pointer += ` params.button accepts ${inputEngine === "native" ? "left|middle|right" : "left|middle|right|back|forward"}; modifiers, durationMs, clickIntervalMs, destination, toX/toY apply when supported.`);
+    guides.keyboard && (guides.keyboard += " Use params.key, keys, shortcut, text, modifiers, count, intervalMs, or delayMs as required by the action.");
+    guides.text && (guides.text += " setValue requires params.value; insert/append/replace require params.text.");
+    guides.scroll && (guides.scroll += " Use params.amount for directional scrolling or x/y and deltaX/deltaY for wheel deltas.");
+    guides.nativeUI && (guides.nativeUI += ` ${categoryParameterGuides.nativeUI}`);
+  }
   return {
-    categoryParameterGuides: detailed ? selectEntries(categoryParameterGuides, selectedCategories) : {},
-    actionParameterOverrides: detailed ? selectEntries(actionParameterOverrides, selectedActions) : {},
-    actions: detailed ? filtered : filtered.map(({ name, category }) => ({ name, category })),
+    categoryParameterGuides: detailed ? guides : {},
+    actionParameterOverrides: detailed ? overrides : {},
+    actions: detailed ? filtered : filtered.map((definition) => ({ name: definition.name, category: definition.category,
+      ...(inputEngine !== "auto" && isInputAction(definition) ? { engines: definition.engines } : {}),
+    })),
   };
 };
 
@@ -63,13 +88,23 @@ export const registerCapabilitiesTool = (server: McpServer, client: RelayClient)
       categories: z.array(z.string().min(1).max(256)).max(100).optional(),
       detail: z.enum(["summary", "full"]).optional(),
     }),
-    outputSchema: z.strictObject({ protocolVersion: z.string(), targetGuide: z.any(), categoryParameterGuides: z.any(), actionParameterOverrides: z.any(), actions: z.array(z.any()), runtime: z.any() }),
+    outputSchema: z.strictObject({ protocolVersion: z.string(), inputEngine: z.enum(["auto", "browser", "native"]), targetGuide: z.any(), categoryParameterGuides: z.any(), actionParameterOverrides: z.any(), actions: z.array(z.any()), runtime: z.any() }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   },
-  async (input, context) => structuredResultContent({
-    protocolVersion: RELAY_PROTOCOL_VERSION,
-    targetGuide,
-    ...capabilityCatalog(input),
-    runtime: await runtimeCapabilities(client, context.mcpReq.signal, input.detail === "full"),
-  }),
+  async (input, context) => {
+    const runtime = await runtimeCapabilities(client, context.mcpReq.signal, input.detail === "full");
+    const inputEngine = client.inputEngine();
+    return structuredResultContent({
+      protocolVersion: RELAY_PROTOCOL_VERSION,
+      inputEngine,
+      targetGuide: inputEngine === "auto" ? targetGuide : {
+        ...targetGuide,
+        x: `${inputEngine === "native" ? "OS-screen" : "Selected-frame viewport"} x coordinate for input; observations retain their original coordinates.`,
+        y: `${inputEngine === "native" ? "OS-screen" : "Selected-frame viewport"} y coordinate for input; observations retain their original coordinates.`,
+        nativeFallback: `Input uses only the ${inputEngine} engine, without engine fallback.`,
+      },
+      ...capabilityCatalog(input, inputEngine),
+      runtime,
+    });
+  },
 );

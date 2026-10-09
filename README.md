@@ -116,6 +116,7 @@ Optional environment settings:
 
 - `BROWSER_RELAY_CONNECT_TIMEOUT_MS` — WebSocket connection timeout; default `10000`.
 - `BROWSER_RELAY_ACTION_TIMEOUT_MS` — default action timeout; default `60000`.
+- `BROWSER_RELAY_INPUT_ENGINE` — optional `auto`, `browser`, or `native` restriction for mouse and keyboard actions.
 - `BROWSER_RELAY_ACTION_DELAY_MIN_MS` and `BROWSER_RELAY_ACTION_DELAY_MAX_MS` — optional minimum and maximum intervals between browser actions, in milliseconds. The equivalent flags are `--action-delay-min-ms` and `--action-delay-max-ms`; each flag takes precedence over its environment setting.
 
 Set action delays in the MCP JSON `env` object or the target browser extension's Settings. For example, `"BROWSER_RELAY_ACTION_DELAY_MIN_MS": "500"` and `"BROWSER_RELAY_ACTION_DELAY_MAX_MS": "1000"` select a random interval from 500 to 1000 milliseconds. One supplied endpoint means a fixed interval. An explicit MCP range overrides the extension's entire range; an explicit zero disables the delay when supplied alone or for both endpoints. Without MCP values, the browser uses its saved extension values. With neither configured, no delay is imposed.
@@ -123,6 +124,39 @@ Set action delays in the MCP JSON `env` object or the target browser extension's
 Delays are enforced on the browser device, including over LAN, before each action and each `browser_batch` member. Time already spent since the previous dispatch or completion counts toward the interval, so slow model responses do not add another full wait. Concurrent observation waits remain active while later actions are dispatched. Internal file-transfer chunks, finalization, and cleanup are not paced. Delay time counts toward the action timeout. Extension delay changes apply to subsequent actions without restarting the relay.
 
 If the browser device has several physical or virtual adapters, set `BROWSER_USE_RELAY_NETWORK_ADDRESS` in the browser process environment to the assigned LAN IPv4 address that External Access should display.
+
+### Input engine
+
+Set the optional input engine in the agent's MCP JSON:
+
+```json
+{
+  "mcpServers": {
+    "browser-use-relay": {
+      "command": "node",
+      "args": ["/absolute/path/to/browser-use-relay-mcp/dist/mcp/entry.js"],
+      "env": {
+        "BROWSER_RELAY_URL": "ws://192.168.0.160:32145",
+        "BROWSER_RELAY_INPUT_ENGINE": "native"
+      }
+    }
+  }
+}
+```
+
+The extension popup also has an **Input engine** dropdown with **Auto**, **Browser**, and **Native**. Its default is Auto and its selection is saved. A fixed MCP JSON value takes precedence over the popup; an absent, empty, or `auto` MCP value follows the popup. When both are Auto, the agent can choose an engine as before.
+
+| MCP JSON value | Mouse and keyboard routing |
+| --- | --- |
+| Missing, empty, or `auto` | Follow the extension dropdown; Auto leaves the agent's engine choices available. |
+| `browser` | Use only browser input, regardless of the dropdown. |
+| `native` | Use only OS mouse and keyboard input, regardless of the dropdown. |
+
+Browser mode exposes browser-generated input; Native mode exposes OS mouse and keyboard input. Fixed modes filter input actions and engines from tool schemas and `browser_capabilities`, enforce the same restriction during execution, and never fall back to another input engine. The restriction covers pointer movement, mouse buttons, clicks, dragging, scrolling, keyboard shortcuts, typing, text editing, form input, and clipboard copy/cut/paste. Scripted DOM mutations and event dispatch are unavailable in fixed input modes. Actions without an implementation in the selected engine are omitted. Observation, screenshots, navigation, file transfer, and other non-input actions retain their existing engines.
+
+Native input uses **desktop screen coordinates**, not webpage viewport coordinates, and needs the intended browser focused. Read queries continue to use their original target and coordinate rules. Popup changes update connected clients' tool schemas through MCP tool-list notifications; clients must refresh their tool discovery when notified. Changing MCP JSON requires restarting that MCP connection.
+
+For an existing installation, pull the updated repository and run `npm run build --workspaces=false` from the package directory on both devices. Reload the extension on the browser device (`edge://extensions` for Microsoft Edge) and restart the agent's MCP connection so both processes use the new build. Native host registration stays valid when the package path and extension ID are unchanged.
 
 The server supports current MCP discovery and compatible 2025-era initialization through the official TypeScript SDK.
 
@@ -133,7 +167,7 @@ The server supports current MCP discovery and compatible 2025-era initialization
 | `browser_capabilities` | Return the protocol, target grammar, parameter guides, action catalog, and selected browser's runtime availability. |
 | `browser_snapshot` | Return page state and revisioned element catalogs across permitted frames. |
 | `browser_query` | Execute one catalog-defined read action; some observations can attach the debugger or temporarily activate a tab. |
-| `browser_action` | Execute one action with automatic or explicit engine routing. |
+| `browser_action` | Execute one action; mouse and keyboard routing respects the configured input engine. |
 | `browser_batch` | Run an ordered workflow and optionally stop on the first action failure. |
 | `browser_events` | Read buffered relay, navigation, DOM, network, download, and page-error events with sequence cursors and overflow reporting. |
 | `browser_upload_files` | Transfer local files or isolated directory trees to the browser device, verify SHA-256 integrity, and set a file input. |
@@ -168,7 +202,7 @@ A target can contain:
 
 Target precedence is element ID, locator, then coordinates. Browser and DOM coordinates use the selected frame's viewport; explicit native actions use OS screen coordinates.
 
-Use `engine: "auto"` unless a workflow specifically needs `browser`, `dom`, or `native`. Automatic routing follows each action's catalog metadata and returns the engine that actually completed it.
+With Auto input mode, omit `engine` or use `engine: "auto"` unless a workflow needs an explicit engine. Automatic routing follows each action's catalog metadata and returns the engine that actually completed it. For input actions in a fixed mode, omit `engine` or specify that mode's engine; conflicting engines and unsupported actions are rejected. Read queries and other non-input actions retain their original engine choices.
 
 For change-sensitive actions, pass the latest snapshot `expectedRevision`. A stale target is fingerprint-revalidated before execution or returned as a retryable failure.
 

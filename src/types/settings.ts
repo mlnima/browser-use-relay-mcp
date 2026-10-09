@@ -3,7 +3,7 @@ export type ActionDelaySettings = {
   actionDelayMaxMs?: number;
 };
 
-export type RelaySettings = ActionDelaySettings & {
+export type RelaySettings = ActionDelaySettings & InputEngineSettings & {
   enabled: boolean;
   externalAccess: boolean;
   port?: number;
@@ -22,3 +22,5 @@ export type RelayStatus = {
   nativeVersion?: string;
   error?: string;
 };
+export type InputEngine = "auto" | "browser" | "native";
+export type InputEngineSettings = { inputEngine?: InputEngine };

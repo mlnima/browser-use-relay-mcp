@@ -1,5 +1,5 @@
 import type { JsonValue } from "./json.js";
-import type { ActionDelaySettings } from "./settings.js";
+import type { ActionDelaySettings, InputEngineSettings } from "./settings.js";
 
 export type ActionEngine = "auto" | "browser" | "dom" | "native";
 
@@ -25,7 +25,7 @@ export type ActionTarget = {
   y?: number;
 };
 
-export type ActionRequest = ActionDelaySettings & {
+export type ActionRequest = ActionDelaySettings & InputEngineSettings & {
   id: string;
   action: string;
   engine?: ActionEngine;

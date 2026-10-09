@@ -38,7 +38,7 @@ export const mouse = {
   getPosition: async () => nativeBinding().getMousePos(),
   move,
   click: async (button: NativeButton) => { prepare(); nativeBinding().mouseClick(button); },
-  doubleClick: async (button: NativeButton) => { prepare(); nativeBinding().mouseClick(button, true); },
+  doubleClick: async (button: NativeButton) => { prepare(); nativeBinding().mouseClick(button); prepare(); nativeBinding().mouseClick(button); },
   pressButton: async (button: NativeButton) => {
     prepare(); nativePageButtonPressed(button);
     try { nativeBinding().mouseToggle("down", button); } catch (error) { nativePageButtonReleased(button); throw error; }

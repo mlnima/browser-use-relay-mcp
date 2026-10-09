@@ -72,7 +72,7 @@ export const openWindowsPage = (page: NativePage): NativePageSurface => {
   if (!child) return fail("Keyboard focus is outside the webpage surface.");
   const rect = region(child);
   if (rect.width <= 0 || rect.height <= 0) return fail("The webpage has no visible input area.");
-  if (!windowsPageFocused(page, window, child, rect)) return fail("Keyboard focus is outside the webpage.");
+  if (!windowsPageFocused(child)) return fail("Keyboard focus is outside the webpage.");
   let confined = false;
   return {
     id: `${window}:${child}`, rect, close: () => undefined,
@@ -85,11 +85,10 @@ export const openWindowsPage = (page: NativePage): NativePageSurface => {
     keys: () => [[0x11, "control"], [0x10, "shift"]].filter(([key]) => keyState(key) < 0).map(([, name]) => String(name)),
     verify: (point) => {
       if (foreground() !== window || !title(window).startsWith(page.title) || !visible(child) ||
-        !same(rect, region(child)) || !windowsPageFocused(page, window, child, rect))
+        !same(rect, region(child)) || !windowsPageFocused(child))
         return fail("The webpage moved, resized, or lost focus. Take a fresh snapshot before continuing.");
       focus(window);
-      if (point && physical(() => { const hit = fromPoint(point); return hit !== child && !parent(child, hit) &&
-        !(hit === window && windowsPageFocused(page, window, child, rect, point)); }))
+      if (point && physical(() => { const hit = fromPoint(point); return hit !== child && !parent(child, hit); }))
         return fail("The pointer target is covered or outside the webpage surface.");
       if ([0x12, 0x5b, 0x5c].some((key) => keyState(key) < 0))
         return fail("An OS shortcut modifier is physically held.");

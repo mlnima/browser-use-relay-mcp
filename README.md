@@ -296,6 +296,80 @@ Then remove the unpacked extension from the browser.
 - **Native input misses the target:** focus the intended browser window and verify display scaling and OS permissions.
 - **Package directory moved:** rebuild if needed and reinstall the Native Messaging host so its absolute launcher paths are current.
 
+## Browser interaction test web app
+
+`test-web-app/` is a standalone React 19.3.0 application for exercising the relay against repeatable website interactions. Its dependencies, source, scripts and output stay in this repository. It does not use the parent agent harness or change the extension's React dependency.
+
+From the root of this standalone repository, install the app's dependencies once:
+
+```bash
+npm --prefix test-web-app ci --workspaces=false --ignore-scripts
+```
+
+The repository's existing dependencies must also be installed, because the app uses its existing esbuild package. Run the app independently with:
+
+```bash
+npm run test-web:build --workspaces=false
+npm run test-web:start --workspaces=false
+```
+
+For development:
+
+```bash
+npm run test-web:dev --workspaces=false
+```
+
+Development watches the app source, rebuilds its bundles and restarts its server. Reload the browser after editing source. Production output is isolated in `dist/test-web-app/`. The MCP's `build:server` clears `dist`, so run `test-web:build` after a main MCP build if you also want the app output.
+
+Open `http://localhost:5000`. Set `BROWSER_USE_RELAY_MCP_TEST_WEB_APP` to choose another port; an absent variable uses 5000. Environment variables and a `.env` in the command's working directory are supported. For example, in PowerShell:
+
+```powershell
+$env:BROWSER_USE_RELAY_MCP_TEST_WEB_APP = '5001'
+npm run test-web:start --workspaces=false
+```
+
+In bash/zsh:
+
+```bash
+BROWSER_USE_RELAY_MCP_TEST_WEB_APP=5001 npm run test-web:start --workspaces=false
+```
+
+The server binds to all interfaces, so another computer can open `http://<app-computer-LAN-IP>:<port>`. A second, automatically allocated port serves the cross-origin iframe fixture. Allow that port through the private-network firewall when testing those frames remotely. Both listeners stop with the app process; no separate frame-server command is required.
+
+### Languages and navigation
+
+The language selector provides English, Deutsch, French, Spanish, Chinese, Japanese, Persian, Arabic, Hindi (the requested Indian language) and Russian. Persian and Arabic set the document and layout to RTL. Language is kept in `?lang=<code>` and follows internal links, frames and popups.
+
+Internal navigation uses the History API without refreshing the document. Page modules load with React `lazy` and dynamic imports. Direct URLs render their initial page on the server and hydrate it on the client; `/server` includes all 60 fixture rows in the initial HTML, without waiting for JavaScript or a fetch. `/async` and `/workflow` intentionally request data after mounting, exposing a visible loading state. All data is local fixture data, with no external website services.
+
+### Scenario coverage
+
+| Route | Level | Interactions |
+| --- | --- | --- |
+| `/overview` | Overview | Scenario catalog, difficulty filter, observed completion, reset |
+| `/forms` | 1 | Controlled React inputs, required/invalid fields, dependent selects, radio/checkbox/multi-select, number/date/time/month/week/color, submit/reset, disabled/readonly controls |
+| `/pointer` | 2 | Hover-only controls, double click, context menu, press-and-hold, range slider, moving target |
+| `/navigation` | 2 | Validated wizard, back/forward, new tab, popup confirmation, native browser alert/confirm/prompt, notification permission |
+| `/files` | 2 | Multiple files, directory chooser, file drop, byte uploads with SHA-256, actual downloads, uploaded-file round trip |
+| `/server` | 2 | Initial server HTML, sortable table, record selection |
+| `/board` | 3 | Kanban transfers, sortable rows, HTML drag events and pointer drops |
+| `/editor` | 3 | Contenteditable, selections, bold/italic, keyboard editing, clipboard copy/paste, save actual HTML/text |
+| `/media` | 3 | Real generated audio, play/pause/seek/volume, generated live video, fullscreen, canvas pointer drawing |
+| `/async` | 4 | Debounced delayed requests, cancellation, loading, explicit HTTP 503, retry, pagination, changing cards |
+| `/frames` | 4 | Same-origin, nested and genuinely cross-origin frames, open/closed shadow roots |
+| `/scroll` | 4 | 1,000 virtual rows, nested vertical/horizontal scroll, sticky content and a distant target |
+| `/workflow` | 5 | Delayed virtual list, blocking modal, duplicate hidden/disabled buttons, conditional steps, required upload, drag approval, verified receipt and browser print dialog |
+
+Each scenario states an objective and shows results from actions actually observed. Completion starts empty and is earned by satisfying the scenario's checks. Reset clears the current run; navigating away resets that page's local controls, while completed scenario results remain until the run is reset. Upload bytes are kept in server memory until that process stops. Downloads return actual bytes, and the response metadata allows integrity checks.
+
+For `/async`, search for `042`, select that record, trigger a failure and retry, then clear the search and load another page. For `/workflow`, find `042`, close the modal, complete contact fields and upload a real file, drag the approval token, then confirm the receipt. Do not edit the DOM to bypass these steps.
+
+The event observer records input events, keys, target/value and `isTrusted`. It does not identify the engine: CDP input and OS input can both produce trusted events. To compare engines, run the same objective through the MCP with `engine: "dom"`, `engine: "browser"` (CDP) or `engine: "native"` explicitly on supported action calls and inspect their returned engine and the resulting page state. Native testing also needs the registered native host on the browser computer and a focused browser window.
+
+Clipboard, notification permission and fullscreen depend on browser permissions and user activation. Clipboard and notification APIs generally need a secure context: localhost works, while plain HTTP at a LAN address may restrict them. Directory selection depends on browser support. Closed shadow roots deliberately require visual/coordinate targeting or keyboard navigation. This app exercises difficult interaction patterns; passing its scenarios does not prove compatibility with every website.
+
+Implementation references: [React versions](https://react.dev/versions), [React lazy](https://react.dev/reference/react/lazy), [server rendering](https://react.dev/reference/react-dom/server/renderToString), [hydration](https://react.dev/reference/react-dom/client/hydrateRoot), and [esbuild API](https://esbuild.github.io/api/).
+
 ## Primary platform references
 
 - [MCP TypeScript SDK v2 server API](https://ts.sdk.modelcontextprotocol.io/v2/api/%40modelcontextprotocol/server/)

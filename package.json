@@ -25,7 +25,10 @@
     "start": "node dist/mcp/entry.js",
     "start:native": "node dist/native/entry.js",
     "native:install": "node scripts/install-native-host.mjs",
-    "native:uninstall": "node scripts/uninstall-native-host.mjs"
+    "native:uninstall": "node scripts/uninstall-native-host.mjs",
+    "test-web:build": "node test-web-app/scripts/build.mjs",
+    "test-web:dev": "node test-web-app/scripts/dev.mjs",
+    "test-web:start": "node dist/test-web-app/server.mjs"
   },
   "engines": {
     "node": ">=20.19.0"

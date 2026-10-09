@@ -17,6 +17,8 @@ const close = (surface: NativePageSurface) => {
 };
 const disarm = () => { clearInterval(watchdog); watchdog = undefined; };
 const hasHeld = () => held.size > 0 || buttons.size > 0;
+const blockedModifier = (surface: NativePageSurface) => surface.keys?.().some((key) =>
+  !controls.has(key) && !shifts.has(key) || process.platform === "darwin" && ["control", "right_control"].includes(key));
 export const nativePageInputHeld = (observation?: string) => Boolean(observation && retained?.page.observation === observation && hasHeld());
 export const revokeNativePage = (observation: string) => revoked.add(observation);
 export const releaseNativePage = async (observation: string) => {
@@ -43,6 +45,7 @@ const arm = () => {
     if (!context) return disarm();
     try {
       context.surface.verify();
+      if (blockedModifier(context.surface)) throw createNativeError("NATIVE_PAGE_SHORTCUT", "An OS shortcut modifier is physically held.");
       if (buttons.size) {
         const point = nativeBinding().getMousePos();
         if (!inside(point, context.surface.rect)) throw createNativeError("NATIVE_PAGE_BOUNDS", "The held pointer left the webpage.");
@@ -56,6 +59,7 @@ const scope = () => {
   current.signal.throwIfAborted();
   if (revoked.has(current.page.observation)) throw createNativeError("NATIVE_PAGE_CHANGED", "Take a fresh snapshot before continuing native input.");
   current.surface.verify();
+  if (blockedModifier(current.surface)) throw createNativeError("NATIVE_PAGE_SHORTCUT", "An OS shortcut modifier is physically held.");
   return current;
 };
 const inside = (point: { x: number; y: number }, rect: NativePageSurface["rect"]) =>

@@ -31,7 +31,7 @@ const keyCode = x11.func("uint8 XKeysymToKeycode(void *display, unsigned long sy
 const fail = (message: string): never => { throw createNativeError("NATIVE_PAGE_UNAVAILABLE", message); };
 const string = (pointer: unknown) => {
   if (!pointer) return "";
-  try { return koffi.decode(pointer, "char", -1) as string; } finally { free(pointer); }
+  try { return koffi.decode.string(pointer); } finally { free(pointer); }
 };
 const showing = (element: unknown) => {
   const states = getStates(element);

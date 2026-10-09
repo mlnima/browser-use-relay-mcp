@@ -61,7 +61,7 @@ export const windowsPageFocused = (page: NativePage, window: number, renderer: n
       if (role[0] === 50030) {
         const name = pointer(element, 23);
         let title: string;
-        try { title = koffi.decode(name, "char16", -1) as string; } finally { freeString(name); }
+        try { title = koffi.decode.string16(name); } finally { freeString(name); }
         const bounds = { left: 0, top: 0, right: 0, bottom: 0 };
         if (call(element, 43, rectResult, bounds) < 0) return fail();
         document ||= title === page.title && bounds.left >= rect.x && bounds.top >= rect.y &&

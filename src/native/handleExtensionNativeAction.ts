@@ -1,5 +1,5 @@
 import WebSocket from "ws";
-import type { ActionRequest } from "../types/action.js";
+import type { ActionRequest, NativePage } from "../types/action.js";
 import type { NativeMessage } from "../types/relay.js";
 import { getActionDefinition, resolveInputAction } from "../protocol/actionCatalog.js";
 import type { InputEngine } from "../types/settings.js";
@@ -8,6 +8,7 @@ import type { createForwardedActions } from "./createForwardedActions.js";
 import type { createNativeRunner } from "./createNativeRunner.js";
 import { canExecuteNativeAction } from "./executeNativeAction.js";
 import { extensionActionReply } from "./extensionActionReply.js";
+import { nativePageInputHeld } from "./page/nativePageScope.js";
 
 type Forwarded = ReturnType<typeof createForwardedActions>;
 type Runner = ReturnType<typeof createNativeRunner>;
@@ -18,8 +19,9 @@ export const handleExtensionNativeAction = (
   forwarded: Forwarded,
   extensionOwner: object,
   inputEngine?: InputEngine,
+  page?: NativePage,
 ) => {
-  const reply = extensionActionReply(write, request);
+  const reply = extensionActionReply(write, request, () => nativePageInputHeld(page?.observation));
   try {
     request = resolveInputAction({ ...request, engine: "native" }, inputEngine);
   } catch (error) {
@@ -42,5 +44,5 @@ export const handleExtensionNativeAction = (
     reply(failedActionResult(request, "NATIVE_ACTION_UNAVAILABLE", `Native action "${request.action}" is not available on this host.`));
     return;
   }
-  runner.execute({ ...request, engine: "native" }, owner, reply);
+  runner.execute({ ...request, engine: "native" }, owner, reply, undefined, page);
 };

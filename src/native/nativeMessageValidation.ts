@@ -17,8 +17,14 @@ export const isBrowserNativeMessage = (value: unknown): value is NativeMessage =
   switch (value.type) {
     case "configure": return isGeneration(value.generation) && isSettings(value.settings);
     case "quiesce": return isGeneration(value.generation);
-    case "actionRequest": return isActionRequest(value.request);
+    case "actionRequest": return isActionRequest(value.request) && (value.page === undefined || isObjectRecord(value.page) &&
+      typeof value.page.focused === "boolean" && typeof value.page.title === "string" && typeof value.page.url === "string" &&
+      typeof value.page.observation === "string" && value.page.observation.length > 0 && value.page.observation.length <= 64 &&
+      [value.page.width, value.page.height, value.page.zoom].every((number) => typeof number === "number" && Number.isFinite(number) && number > 0) &&
+      [value.page.tabId, value.page.windowId].every((number) => typeof number === "number" && Number.isSafeInteger(number) && number >= 0));
     case "actionResult": return isActionResult(value.result);
+    case "pageInvalidated": return typeof value.observation === "string" && value.observation.length > 0 && value.observation.length <= 64 &&
+      typeof value.reason === "string" && value.reason.length <= MAX_CANCEL_REASON_LENGTH;
     case "cancel": return isCancel(value);
     case "event": return typeof value.name === "string" && Boolean(value.name) &&
       (value.data === undefined || isJsonValue(value.data));

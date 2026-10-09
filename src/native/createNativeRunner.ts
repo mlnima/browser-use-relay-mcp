@@ -1,4 +1,4 @@
-import type { ActionRequest, ActionResult } from "../types/action.js";
+import type { ActionRequest, ActionResult, NativePage } from "../types/action.js";
 import { DEFAULT_ACTION_TIMEOUT_MS } from "./constants.js";
 import { cancelDownloadsByOwner, cleanupDownloads } from "./downloadSessions.js";
 import { executeNativeWithRetries } from "./executeNativeWithRetries.js";
@@ -6,9 +6,12 @@ import { createNativeError, toActionError } from "./nativeError.js";
 import { releaseAllNativeInput, releaseNativeInputOwner, runWithNativeInputOwner } from "./nativeInputState.js";
 import { cancelUpload, cancelUploadsByOwner, cleanupUploads } from "./uploadCleanup.js";
 import { stringParam } from "./nativeParams.js";
+import { prepareNativeBinding } from "./nativeBinding.js";
+import { nativePageActions } from "./nativeActionNames.js";
+import { withNativePage, releaseNativePage, revokeNativePage } from "./page/nativePageScope.js";
 
 type Reply = (result: ActionResult) => void;
-type ActiveAction = { controller: AbortController; timer: NodeJS.Timeout; settled: Promise<void> };
+type ActiveAction = { controller: AbortController; timer: NodeJS.Timeout; settled: Promise<void>; page?: NativePage };
 export const createNativeRunner = () => {
   const active = new Map<object, Map<string, ActiveAction>>();
   let queue = Promise.resolve();
@@ -30,7 +33,7 @@ export const createNativeRunner = () => {
     queue = task.then(() => undefined, () => undefined);
     return task;
   };
-  const execute = (request: ActionRequest, owner: object, reply: Reply, beforeExecute?: (signal: AbortSignal, dispatch: () => boolean) => Promise<boolean>) => {
+  const execute = (request: ActionRequest, owner: object, reply: Reply, beforeExecute?: (signal: AbortSignal, dispatch: () => boolean) => Promise<boolean>, page?: NativePage) => {
     const startedAt = performance.now();
     const controller = new AbortController();
     const timeoutMs = request.timeoutMs ?? DEFAULT_ACTION_TIMEOUT_MS;
@@ -39,8 +42,15 @@ export const createNativeRunner = () => {
     )), timeoutMs);
     let resolveSettled: () => void = () => undefined;
     const settled = new Promise<void>((resolve) => { resolveSettled = resolve; });
-    ownerActions(owner).set(request.id, { controller, timer, settled });
-    const run = () => runWithNativeInputOwner(owner, () => executeNativeWithRetries(request, controller.signal, owner));
+    ownerActions(owner).set(request.id, { controller, timer, settled, page });
+    const run = () => runWithNativeInputOwner(owner, async () => {
+      if (!nativePageActions.has(request.action)) return executeNativeWithRetries(request, controller.signal, owner);
+      try {
+        await prepareNativeBinding();
+        return await withNativePage(page, controller.signal, owner, (error) => controller.abort(error),
+          () => executeNativeWithRetries(request, controller.signal, owner));
+      } catch (error) { await releaseNativeInputOwner(owner); throw error; }
+    });
     const dispatch = async () => {
       if (!beforeExecute) return append(run);
       for (;;) {
@@ -62,13 +72,15 @@ export const createNativeRunner = () => {
       engine: "native",
       ...(data === undefined ? {} : { data }),
       durationMs: Math.round(performance.now() - startedAt),
-    })).catch((error: unknown) => reply({
+    })).catch((error: unknown) => {
+      reply({
       id: request.id,
       success: false,
       engine: "native",
       error: toActionError(error),
       durationMs: Math.round(performance.now() - startedAt),
-    })).finally(async () => {
+      });
+    }).finally(async () => {
       const transferId = stringParam(request, "transferId");
       if (controller.signal.aborted && transferId && request.action === "uploadFile")
         await cancelUpload(transferId, owner).catch(() => undefined);
@@ -89,6 +101,12 @@ export const createNativeRunner = () => {
       (entry.id === id || entry.id.startsWith(`${id}:`)) && (!owner || entry.owner === owner));
     for (const entry of matched) await cancel(entry.id, reason, entry.owner);
     return matched.map((entry) => entry.id);
+  };
+  const invalidatePage = (observation: string, reason: string) => {
+    revokeNativePage(observation);
+    for (const { action } of entries()) if (action.page?.observation === observation)
+      action.controller.abort(createNativeError("NATIVE_PAGE_CHANGED", reason));
+    return append(() => releaseNativePage(observation));
   };
 
   const cancelOwner = async (owner: object, reason: string) => {
@@ -115,7 +133,7 @@ export const createNativeRunner = () => {
   };
 
   return {
-    execute, cancel, cancelPrefix, cancelOwner, disconnectOwner,
+    execute, cancel, cancelPrefix, cancelOwner, disconnectOwner, invalidatePage,
     releaseInput: () => append(releaseAllNativeInput), close,
     has: (id: string, owner?: object) => owner ? active.get(owner)?.has(id) === true : entries().some((entry) => entry.id === id),
   };

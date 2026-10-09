@@ -25,7 +25,11 @@ export const actionCatalog = [
   ...stateNetworkActions,
   ...mediaBrowserDataActions,
   ...compoundActions,
-] as const;
+].flatMap((definition): ActionDefinition[] => {
+  const engines = definition.category === "nativeUI" || ["setInputFiles", "openDownload", "revealDownload", "blur"].includes(definition.name)
+    ? definition.engines.filter((engine) => engine !== "native") : definition.engines;
+  return engines.length ? [{ ...definition, engines }] : [];
+});
 
 export const getActionDefinition = (name: string) =>
   actionCatalog.find((definition) => definition.name === name);
@@ -48,10 +52,7 @@ export const isInputAction = (definition?: ActionDefinition) => Boolean(definiti
 export const getInputActionCatalog = (inputEngine: InputEngine): readonly ActionDefinition[] =>
   inputEngine === "auto" ? actionCatalog : actionCatalog.flatMap((definition): ActionDefinition[] =>
     !isInputAction(definition) ? [definition] : definition.engines.some((engine) => engine === inputEngine)
-      ? [{ ...definition, engines: [inputEngine], description: inputEngine === "native"
-        ? definition.description.replace("viewport coordinates", "OS-screen coordinates").replace("browser input", "OS input")
-          .replace("Move the pointer to an element.", "Move the pointer to OS-screen coordinates.")
-        : definition.description }] : []);
+      ? [{ ...definition, engines: [inputEngine] }] : []);
 
 export const resolveInputAction = (request: ActionRequest, extension?: InputEngine): ActionRequest => {
   const inputEngine = resolveInputEngine(request.inputEngine, extension);

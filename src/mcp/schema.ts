@@ -60,8 +60,7 @@ export const createActionSchema = (inputEngine: InputEngine) => {
       ...actionFields,
       action: z.enum(inputs),
       engine: z.literal(inputEngine).optional().describe(`Input actions use only ${inputEngine}.`),
-      target: inputEngine === "native" ? z.strictObject({ x: z.number(), y: z.number() }).optional()
-        .describe("OS-screen coordinates only; omit for current focus or pointer position.") : targetSchema,
+      target: targetSchema.describe("Input coordinates are CSS viewport coordinates in the selected webpage/frame. Native input cannot target browser or OS UI."),
     }),
     z.strictObject({ ...actionFields, action: z.enum(other) }),
   ]);

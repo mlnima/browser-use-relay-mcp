@@ -51,7 +51,7 @@ const capabilityCatalog = (input: { actions?: string[]; categories?: string[]; d
   const guides = selectEntries(categoryParameterGuides, selectedCategories);
   const overrides = selectEntries(actionParameterOverrides, selectedActions);
   if (inputEngine !== "auto") {
-    const coordinates = inputEngine === "native" ? "OS-screen coordinates; no element IDs, locators, or tab/frame IDs" : "frame viewport coordinates or a revisioned element target";
+    const coordinates = "frame viewport coordinates or a revisioned element target";
     const inputGuide = `Only the ${inputEngine} engine is available for input. Use ${coordinates}. Keyboard actions without a target use current focus.`;
     for (const definition of filtered.filter(isInputAction)) {
       guides[definition.category] = inputGuide;
@@ -67,7 +67,6 @@ const capabilityCatalog = (input: { actions?: string[]; categories?: string[]; d
     guides.keyboard && (guides.keyboard += " Use params.key, keys, shortcut, text, modifiers, count, intervalMs, or delayMs as required by the action.");
     guides.text && (guides.text += " setValue requires params.value; insert/append/replace require params.text.");
     guides.scroll && (guides.scroll += " Use params.amount for directional scrolling or x/y and deltaX/deltaY for wheel deltas.");
-    guides.nativeUI && (guides.nativeUI += ` ${categoryParameterGuides.nativeUI}`);
   }
   return {
     categoryParameterGuides: detailed ? guides : {},
@@ -99,8 +98,8 @@ export const registerCapabilitiesTool = (server: McpServer, client: RelayClient)
       inputEngine,
       targetGuide: inputEngine === "auto" ? targetGuide : {
         ...targetGuide,
-        x: `${inputEngine === "native" ? "OS-screen" : "Selected-frame viewport"} x coordinate for input; observations retain their original coordinates.`,
-        y: `${inputEngine === "native" ? "OS-screen" : "Selected-frame viewport"} y coordinate for input; observations retain their original coordinates.`,
+        x: "Selected-frame CSS viewport x coordinate. Native input is confined to the visible webpage.",
+        y: "Selected-frame CSS viewport y coordinate. Native input is confined to the visible webpage.",
         nativeFallback: `Input uses only the ${inputEngine} engine, without engine fallback.`,
       },
       ...capabilityCatalog(input, inputEngine),

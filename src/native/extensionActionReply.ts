@@ -6,8 +6,9 @@ import { MAX_NATIVE_OUTPUT_BYTES } from "./constants.js";
 export const extensionActionReply = (
   write: (message: NativeMessage) => void,
   request: ActionRequest,
+  inputHeld?: () => boolean,
 ) => (result: ActionResult) => {
-  const message = { type: "actionResult", result } as const;
+  const message = { type: "actionResult", result, ...(inputHeld ? { inputHeld: inputHeld() } : {}) } as const;
   if (Buffer.byteLength(JSON.stringify(message)) <= MAX_NATIVE_OUTPUT_BYTES) {
     write(message);
     return;

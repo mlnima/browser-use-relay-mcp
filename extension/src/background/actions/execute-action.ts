@@ -9,6 +9,8 @@ import { executeContentAction } from "./content-transport";
 import { executeCompoundAction } from "./compound-actions";
 import { executeSnapshot } from "./snapshot";
 import { executionError, isFallbackSafeError } from "./execution-error";
+import { withNativePageObservation } from "../native/native-page";
+import { resolveTabId } from "./tab";
 
 type EngineOutput = { data: JsonValue; revision?: number };
 type NativeExecute = (request: ActionRequest, signal: AbortSignal) => Promise<ActionResult>;
@@ -21,8 +23,13 @@ const delay = (milliseconds: number, signal: AbortSignal) => new Promise<void>((
 });
 
 const executeDom = async (request: ActionRequest, signal: AbortSignal) => {
-  if (request.action === "snapshot") return { data: await executeSnapshot(request, signal) };
-  const result = await executeContentAction(request, signal);
+  if (request.action === "snapshot") {
+    const data = await withNativePageObservation(await resolveTabId(request.target?.tabId), () => executeSnapshot(request, signal));
+    return { data };
+  }
+  const result = request.action === "getPageState"
+    ? await withNativePageObservation(await resolveTabId(request.target?.tabId), () => executeContentAction(request, signal))
+    : await executeContentAction(request, signal);
   if (!result.success) throw executionError(result.error?.message || "Content action failed.", result.error?.code === "TARGET_RESOLUTION_FAILED");
   return { data: result.data ?? null, revision: result.revision };
 };

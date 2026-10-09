@@ -67,7 +67,7 @@ export const registerBatchTool = (server: McpServer, client: RelayClient) => ser
         results.push(result);
         imageResult?.image && images.length < MAX_BATCH_IMAGES && images.push(imageResult.image);
         encodedBytes += requiredBytes;
-        if (!result.success && input.stopOnError !== false) break;
+        if (!result.success && (input.stopOnError !== false || result.engine === "native")) break;
       } catch (error) {
         context.mcpReq.signal.throwIfAborted();
         return {

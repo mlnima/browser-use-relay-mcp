@@ -22,7 +22,7 @@ const receiveNativeMessage = (message: NativeMessage) => {
   }
   if (message.type === "cancel") controllers.get(message.id)?.abort(new Error(message.reason || "Cancelled"));
   if (message.type === "actionRequest") void runAction(message.request);
-  if (message.type === "actionResult") nativeActions.complete(message.result);
+  if (message.type === "actionResult") nativeActions.complete(message.result, message.inputHeld);
 };
 const bridge = createNativeBridge({
   onMessage: receiveNativeMessage,

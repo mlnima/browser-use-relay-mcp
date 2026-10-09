@@ -37,6 +37,7 @@
     "@modelcontextprotocol/server": "2.0.0",
     "@nut-tree-fork/libnut": "4.2.6",
     "clipboardy": "5.3.2",
+    "koffi": "3.3.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "ws": "8.21.1",

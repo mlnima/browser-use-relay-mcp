@@ -73,8 +73,9 @@ export const runNativeHost = async () => {
         configureQueue = configureQueue.catch(() => undefined).then(() => quiesce(message.generation));
         break;
       case "actionResult": actions.onExtensionResult(message.result); break;
-      case "actionRequest": actions.onExtensionAction(message.request); break;
+      case "actionRequest": actions.onExtensionAction(message.request, message.page); break;
       case "cancel": void actions.onExtensionCancel(message.id, message.reason); break;
+      case "pageInvalidated": void actions.invalidatePage(message.observation, message.reason); break;
       case "event": transport.broadcast(message); break;
     }
   };

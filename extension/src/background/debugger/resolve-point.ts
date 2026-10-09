@@ -19,7 +19,7 @@ const coordinateBounds = async (request: ActionRequest, tabId: number, signal?: 
   if (await resolveBrowserFrameId(request, tabId)) {
     const viewport = await readFrameViewport(request, signal);
     if (x < 0 || y < 0 || x >= viewport.width || y >= viewport.height) throw new Error("Target coordinates are outside the selected frame viewport.");
-    return translateFrameBounds(request, tabId, bounds, signal, viewport);
+    return translateFrameBounds(request, tabId, bounds, signal, viewport, request.engine === "native");
   }
   const { layoutViewport } = await sendDebuggerCommand<LayoutMetrics>(tabId, "Page.getLayoutMetrics");
   if (x < 0 || y < 0 || x >= layoutViewport.clientWidth || y >= layoutViewport.clientHeight) throw new Error("Target coordinates are outside the top-frame viewport.");
@@ -38,13 +38,13 @@ export const resolveElementPath = async (request: ActionRequest, signal?: AbortS
 
 export const resolveBounds = async (request: ActionRequest, tabId: number, signal?: AbortSignal): Promise<ViewportBounds> => {
   if (request.target?.x !== undefined || request.target?.y !== undefined) return coordinateBounds(request, tabId, signal);
-  const result = await executeContentAction({ ...request, action: "getBoundingBox", engine: "dom", params: { ...request.params, actionable: true } }, signal);
+  const result = await executeContentAction({ ...request, action: "getBoundingBox", engine: "dom", params: { ...request.params, actionable: request.engine !== "native" } }, signal);
   if (!result.success || !result.data || typeof result.data !== "object" || Array.isArray(result.data)) {
     throw executionError(result.error?.message || "Unable to resolve target coordinates.", result.error?.code === "TARGET_RESOLUTION_FAILED");
   }
   const bounds = result.data as unknown as ViewportBounds;
   if (![bounds.x, bounds.y, bounds.width, bounds.height].every(Number.isFinite)) throw new Error("The target returned invalid viewport bounds.");
-  return translateFrameBounds(request, tabId, bounds, signal);
+  return translateFrameBounds(request, tabId, bounds, signal, undefined, request.engine === "native");
 };
 
 export const resolvePoint = async (request: ActionRequest, tabId: number, signal?: AbortSignal): Promise<ViewportPoint> => {

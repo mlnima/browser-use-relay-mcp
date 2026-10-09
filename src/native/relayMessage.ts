@@ -74,7 +74,8 @@ export const handleRelayMessage = (
     socket.close(1002, "Send hello before relay requests.");
     return;
   }
-  if (message.type === "action" && isActionRequest(message.request)) {
+  if (message.type === "action" && isActionRequest(message.request) &&
+    !("page" in message.request) && !("nativePage" in message.request)) {
     handlers.action(socket, message.request);
     return;
   }

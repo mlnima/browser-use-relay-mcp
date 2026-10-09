@@ -1,14 +1,20 @@
 import { abortableDelay, throwIfAborted } from "./nativeError.js";
 import { nativeBinding } from "./nativeBinding.js";
 import type { NativeButton } from "./nativeButtons.js";
+import { assertNativePagePoint, nativePointerInsidePage, nativePageButtonPressed, nativePageButtonReleased, assertNativePageWheel, assertNativePageKeys } from "./page/nativePageScope.js";
 
 export type NativePoint = { x: number; y: number };
 const config = { autoDelayMs: 0, mouseSpeed: 1000 };
 const setPosition = async (point: NativePoint) => {
+  assertNativePagePoint(point);
   nativeBinding().moveMouse(point.x, point.y);
+  const actual = nativeBinding().getMousePos();
+  assertNativePagePoint(actual);
+  if (Math.hypot(actual.x - point.x, actual.y - point.y) > 1.5) throw new Error("Native pointer movement did not reach the webpage target.");
 };
 const move = async (target: NativePoint, signal: AbortSignal) => {
   const origin = nativeBinding().getMousePos();
+  if (!nativePointerInsidePage(origin)) return setPosition(target);
   const distance = Math.hypot(target.x - origin.x, target.y - origin.y);
   const durationMs = config.mouseSpeed > 0 ? distance * 1000 / config.mouseSpeed : 0;
   const steps = Math.max(1, Math.min(2048, Math.ceil(distance), Math.ceil(durationMs / 8)));
@@ -23,7 +29,8 @@ const move = async (target: NativePoint, signal: AbortSignal) => {
     });
   }
 };
-const prepare = () => nativeBinding().setMouseDelay(0);
+const prepare = () => { assertNativePagePoint(nativeBinding().getMousePos()); assertNativePageKeys([]); nativeBinding().setMouseDelay(0); };
+const scroll = (x: number, y: number) => { prepare(); assertNativePageWheel(); nativeBinding().scrollMouse(x, y); };
 
 export const mouse = {
   config,
@@ -32,10 +39,15 @@ export const mouse = {
   move,
   click: async (button: NativeButton) => { prepare(); nativeBinding().mouseClick(button); },
   doubleClick: async (button: NativeButton) => { prepare(); nativeBinding().mouseClick(button, true); },
-  pressButton: async (button: NativeButton) => { prepare(); nativeBinding().mouseToggle("down", button); },
-  releaseButton: async (button: NativeButton) => { prepare(); nativeBinding().mouseToggle("up", button); },
-  scrollUp: async (amount: number) => nativeBinding().scrollMouse(0, amount),
-  scrollDown: async (amount: number) => nativeBinding().scrollMouse(0, -amount),
-  scrollLeft: async (amount: number) => nativeBinding().scrollMouse(-amount, 0),
-  scrollRight: async (amount: number) => nativeBinding().scrollMouse(amount, 0),
+  pressButton: async (button: NativeButton) => {
+    prepare(); nativePageButtonPressed(button);
+    try { nativeBinding().mouseToggle("down", button); } catch (error) { nativePageButtonReleased(button); throw error; }
+  },
+  releaseButton: async (button: NativeButton) => {
+    nativeBinding().setMouseDelay(0); nativeBinding().mouseToggle("up", button); nativePageButtonReleased(button);
+  },
+  scrollUp: async (amount: number) => scroll(0, amount),
+  scrollDown: async (amount: number) => scroll(0, -amount),
+  scrollLeft: async (amount: number) => scroll(-amount, 0),
+  scrollRight: async (amount: number) => scroll(amount, 0),
 };

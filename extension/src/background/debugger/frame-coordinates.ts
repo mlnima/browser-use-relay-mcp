@@ -51,11 +51,12 @@ const mapBounds = (bounds: ViewportBounds, quad: number[], viewport: { width: nu
   return { ...bounds, x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys), hitX: hit.x, hitY: hit.y };
 };
 
-export const translateFrameBounds = async (request: ActionRequest, tabId: number, bounds: ViewportBounds, signal?: AbortSignal, suppliedViewport?: { width: number; height: number }) => {
+export const translateFrameBounds = async (request: ActionRequest, tabId: number, bounds: ViewportBounds, signal?: AbortSignal, suppliedViewport?: { width: number; height: number }, readOnly = false) => {
   const frameId = await resolveBrowserFrameId(request, tabId);
   if (frameId === 0) return bounds;
   const cdpFrameId = await resolveCdpFrame(tabId, frameId);
-  const owner = await scrollFrameChainIntoView(tabId, cdpFrameId, signal);
+  const owner = readOnly ? await sendDebuggerCommand<{ backendNodeId: number }>(tabId, "DOM.getFrameOwner", { frameId: cdpFrameId })
+    : await scrollFrameChainIntoView(tabId, cdpFrameId, signal);
   signal?.throwIfAborted();
   const [{ model }, viewport, metrics] = await Promise.all([
     sendDebuggerCommand<BoxModel>(tabId, "DOM.getBoxModel", { backendNodeId: owner.backendNodeId }),

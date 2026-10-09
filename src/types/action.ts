@@ -25,6 +25,28 @@ export type ActionTarget = {
   y?: number;
 };
 
+export type NativePage = {
+  tabId: number;
+  windowId: number;
+  title: string;
+  url: string;
+  width: number;
+  height: number;
+  zoom: number;
+  focused: boolean;
+  observation: string;
+};
+
+export type NativePageRect = { x: number; y: number; width: number; height: number };
+export type NativePageSurface = {
+  id: string;
+  rect: NativePageRect;
+  verify: (point?: { x: number; y: number }) => void;
+  close: () => void;
+  keys?: () => string[];
+  confine?: (enabled: boolean) => void;
+};
+
 export type ActionRequest = ActionDelaySettings & InputEngineSettings & {
   id: string;
   action: string;

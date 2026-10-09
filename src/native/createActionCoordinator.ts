@@ -1,6 +1,6 @@
 import type WebSocket from "ws";
 import { getActionDefinition, resolveInputAction } from "../protocol/actionCatalog.js";
-import type { ActionRequest, ActionResult } from "../types/action.js";
+import type { ActionRequest, ActionResult, NativePage } from "../types/action.js";
 import type { NativeMessage } from "../types/relay.js";
 import type { ActionDelaySettings, InputEngineSettings } from "../types/settings.js";
 import { failedActionResult } from "./actionResult.js";
@@ -14,6 +14,7 @@ import { abortableDelay, createNativeError } from "./nativeError.js";
 import { isDownloadTransferRequest } from "./nativeDownloadTransfer.js";
 import { isUploadTransferRequest } from "./nativeUploadTransfer.js";
 import { sendRelayMessage } from "./relaySend.js";
+import { nativePageActions } from "./nativeActionNames.js";
 const extensionOwner = {};
 export const createActionCoordinator = (write: (message: NativeMessage) => void, getDelaySettings: () => ActionDelaySettings & InputEngineSettings) => {
   const runner = createNativeRunner();
@@ -102,7 +103,7 @@ export const createActionCoordinator = (write: (message: NativeMessage) => void,
       sendFailure(socket, request, "NATIVE_ACTION_UNAVAILABLE", `Native action "${request.action}" is not implemented by the OS host.`);
       return;
     }
-    if (native) {
+    if (native && !nativePageActions.has(request.action)) {
       const transfer = isUploadTransferRequest(request) || isDownloadTransferRequest(request);
       let dispatched = false;
       runner.execute(request, socket, (result) => {
@@ -111,8 +112,8 @@ export const createActionCoordinator = (write: (message: NativeMessage) => void,
       }, transfer ? undefined : (signal, dispatch) => waitToDispatch(request, signal, () => dispatched = dispatch()));
     } else queueAction(socket, request);
   };
-  const onExtensionAction = (request: ActionRequest) =>
-    handleExtensionNativeAction(write, request, runner, forwarded, extensionOwner, getDelaySettings().inputEngine);
+  const onExtensionAction = (request: ActionRequest, page?: NativePage) =>
+    handleExtensionNativeAction(write, request, runner, forwarded, extensionOwner, getDelaySettings().inputEngine, page);
   const onRelayCancel = async (socket: WebSocket, id: string, reason?: string) => {
     const message = reason || "The MCP client cancelled the action.";
     waiting.get(socket)?.get(id)?.("ACTION_CANCELLED", message);
@@ -143,6 +144,7 @@ export const createActionCoordinator = (write: (message: NativeMessage) => void,
     onExtensionAction,
     onExtensionResult: (result: ActionResult) => forwarded.complete(result.id, result),
     onExtensionCancel,
+    invalidatePage: runner.invalidatePage,
     releaseInput: () => runner.releaseInput().then(resetNativeDragState),
     close,
   };

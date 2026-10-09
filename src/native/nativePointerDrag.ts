@@ -8,6 +8,7 @@ import { requestModifierKeys } from "./nativeModifiers.js";
 import { assertNoNativeWebTarget, objectParam, optionalRequestPoint } from "./nativeParams.js";
 import { moveNativeScreenPoint } from "./nativeMouse.js";
 import { mouse } from "./nativeMouseAdapter.js";
+import { nativePagePoint, assertNativePagePoint } from "./page/nativePageScope.js";
 const buttonFor = (request: ActionRequest) => {
   const requested = request.params?.button;
   if (requested !== undefined && typeof requested !== "string")
@@ -30,6 +31,8 @@ const completeDrag = async (request: ActionRequest, button: ReturnType<typeof re
     ? 0 : nativeInputDuration(durationValue, 0, "Drag durationMs");
   assertNativeInputDuration(durationMs * 2, "Native drag duration");
   if (isNativeButtonHeld(button)) throw createNativeError("NATIVE_BUTTON_HELD", `Native pointer button "${button}" is already held.`);
+  assertNativePagePoint(nativePagePoint(source));
+  assertNativePagePoint(nativePagePoint(destination));
   await moveNativeScreenPoint(request, source, signal);
   const ownedModifiers = await acquireNativeKeys(modifiers);
   try {

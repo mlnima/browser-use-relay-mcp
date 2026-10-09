@@ -5,9 +5,9 @@ export const targetGuide = {
   documentId: "Document ID from a frame snapshot when available.",
   elementId: "In-memory element ID from the latest snapshot or query.",
   locator: "selector, xpath, text/exactText, role/name, label, placeholder, and zero-based nth.",
-  x: "Selected-frame viewport x coordinate for browser/DOM engines; OS-screen x for explicit native actions.",
-  y: "Selected-frame viewport y coordinate for browser/DOM engines; OS-screen y for explicit native actions.",
-  nativeFallback: "Automatic routing never reinterprets a supplied web target or pointer coordinates as OS-screen coordinates; request engine native explicitly for OS coordinates.",
+  x: "Selected-frame CSS viewport x coordinate for all engines. Native input is confined to the webpage.",
+  y: "Selected-frame CSS viewport y coordinate for all engines. Native input is confined to the webpage.",
+  nativeFallback: "Native input requires a fresh page observation and verified foreground webpage. Browser and OS UI targets and shortcuts are rejected.",
   mutationFallback: "Automatic routing stops after a mutating engine may have emitted side effects; only an unhandled engine, an exact pre-action target-resolution failure, or a read-only failure can fall through or retry safely.",
 } as const;
 
@@ -40,5 +40,4 @@ export const categoryParameterGuides = {
   media: "target media element; params time, volume, rate, enabled, or caption index.",
   browserData: "params follow history/bookmark/session/reading-list operations; destructive clears require explicit data/options.",
   compound: "Compound-specific shapes are returned in actionParameterOverrides.",
-  nativeUI: "OS-screen target or params x/y; dialogs accept paths/path, decision/tabCount, shortcut, text, and timing fields.",
 } as const;

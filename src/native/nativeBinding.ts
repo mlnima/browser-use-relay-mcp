@@ -12,12 +12,20 @@ type RawInput = {
   setKeyboardDelay: (milliseconds: number) => void;
   setMouseDelay: (milliseconds: number) => void;
   typeString: (value: string) => void;
+  getActiveWindow: () => number;
+  getWindowRect: (window: number) => { x: number; y: number; width: number; height: number };
 };
 
 const require = createRequire(import.meta.url);
 let binding: RawInput | undefined;
+let windows: typeof import("./page/windowsPage.js") | undefined;
+
+export const prepareNativeBinding = async () => {
+  if (process.platform === "win32") windows ||= await import("./page/windowsPage.js");
+};
 
 export const nativeBinding = () => {
   binding ||= (require("@nut-tree-fork/libnut/dist/import_libnut.js") as { libnut: RawInput }).libnut;
-  return binding;
+  return windows ? { ...binding, getMousePos: windows.windowsMousePosition,
+    moveMouse: (x: number, y: number) => windows!.moveWindowsMouse({ x, y }) } : binding;
 };

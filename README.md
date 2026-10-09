@@ -26,7 +26,7 @@ The content engine assigns element IDs in memory. It does not add marker IDs or 
 - Node.js 20.19 or newer and npm.
 - Chrome, Microsoft Edge, Chromium, Brave, or Vivaldi based on Chromium 130 or newer.
 - Windows, macOS, or Linux, including Ubuntu.
-- A graphical desktop session for native mouse, keyboard, dialog, and clipboard actions.
+- A graphical desktop session for native mouse, keyboard, and clipboard actions. macOS requires Accessibility permission; Linux requires X11 and AT-SPI browser accessibility.
 - User-level permission to register a Native Messaging host.
 
 macOS can request Accessibility, Input Monitoring, or Screen Recording permission for native interaction. Linux native input requires an accessible graphical session; compositor and Wayland policies can restrict synthetic OS input.
@@ -154,7 +154,13 @@ The extension popup also has an **Input engine** dropdown with **Auto**, **Brows
 
 Browser mode exposes browser-generated input; Native mode exposes OS mouse and keyboard input. Fixed modes filter input actions and engines from tool schemas and `browser_capabilities`, enforce the same restriction during execution, and never fall back to another input engine. The restriction covers pointer movement, mouse buttons, clicks, dragging, scrolling, keyboard shortcuts, typing, text editing, form input, and clipboard copy/cut/paste. Scripted DOM mutations and event dispatch are unavailable in fixed input modes. Actions without an implementation in the selected engine are omitted. Observation, screenshots, navigation, file transfer, and other non-input actions retain their existing engines.
 
-Native input uses **desktop screen coordinates**, not webpage viewport coordinates, and needs the intended browser focused. Read queries continue to use their original target and coordinate rules. Popup changes update connected clients' tool schemas through MCP tool-list notifications; clients must refresh their tool discovery when notified. Changing MCP JSON requires restarting that MCP connection.
+Native input is restricted to the focused **webpage content area**. Coordinates are CSS viewport coordinates, including coordinates returned by page snapshots; selected-frame coordinates and element targets are resolved to the top-page viewport without scripted scrolling. The host converts them using the actual OS webpage surface, window position, and viewport scale. Windows uses per-monitor physical coordinates, including mixed DPI and negative monitor positions. Browser zoom is included through the measured viewport-to-surface ratio.
+
+Take a fresh `browser_snapshot` or `getPageState` before native input, and again after navigation, zoom, movement, resizing, or focus changes. The extension supplies private page measurements; the agent cannot supply its own desktop bounds. The host verifies page focus, geometry, and pointer hit targets before input, checks each drag step and typed character, and releases held input if the page changes. Windows confines held pointer input to the webpage. A native failure stops `browser_batch` even with `stopOnError: false`. If page geometry or focus cannot be verified, the action fails without sending desktop input.
+
+Native input cannot operate the address bar, tab strip, window controls, OS dialogs, or other apps. Tab traversal and shortcuts that can reach browser or OS UI are rejected, including Alt/Win shortcuts, function keys, Ctrl+L, Ctrl+Shift+Delete, and Ctrl+wheel zoom. Use programmatic actions such as `newTab`, `activateTab`, and browser zoom instead. Native dialog tools are omitted; programmatic file transfers remain available.
+
+Popup changes update connected clients' tool schemas through MCP tool-list notifications; clients must refresh their tool discovery when notified. Changing MCP JSON requires restarting that MCP connection.
 
 For an existing installation, pull the updated repository and run `npm run build --workspaces=false` from the package directory on both devices. Reload the extension on the browser device (`edge://extensions` for Microsoft Edge) and restart the agent's MCP connection so both processes use the new build. Native host registration stays valid when the package path and extension ID are unchanged.
 
@@ -200,7 +206,7 @@ A target can contain:
 }
 ```
 
-Target precedence is element ID, locator, then coordinates. Browser and DOM coordinates use the selected frame's viewport; explicit native actions use OS screen coordinates.
+Target precedence is element ID, locator, then coordinates. All input engines use the selected frame's CSS viewport coordinates. Native input maps those coordinates to the verified OS webpage surface.
 
 With Auto input mode, omit `engine` or use `engine: "auto"` unless a workflow needs an explicit engine. Automatic routing follows each action's catalog metadata and returns the engine that actually completed it. For input actions in a fixed mode, omit `engine` or specify that mode's engine; conflicting engines and unsupported actions are rejected. Read queries and other non-input actions retain their original engine choices.
 
@@ -294,7 +300,7 @@ Copy a completed browser-device download back with `browser_download_file`:
 ## Capability notes
 
 - CDP browser input is higher fidelity than script-dispatched events, but attaching `chrome.debugger` displays Chromium's debugger notice. Opening DevTools for the same target or dismissing the notice can detach the session.
-- Native actions control the focused desktop and are used for browser chrome, file choosers, Save As, permission prompts, and other UI outside webpage content.
+- Native mouse and keyboard actions stay within the verified foreground webpage. Browser chrome, native dialogs, and other desktop UI cannot be controlled through this engine.
 - `chrome://`, extension-store pages, browser-owned viewers, and other protected surfaces restrict content scripts or debugger access.
 - Cross-origin frame access depends on host permission and Chromium restrictions. The extension reports frame-specific failures rather than silently targeting the wrong frame.
 - Tab audio/video capture and some browser UI operations remain subject to Chromium user-activation rules.
@@ -327,7 +333,7 @@ Then remove the unpacked extension from the browser.
 - **LAN connection fails:** enable External Access, use the displayed LAN address, and allow the selected Node process/port through the browser device's private-network firewall.
 - **Action targets the wrong page state:** take a new snapshot and send its element ID and revision.
 - **Debugger action fails:** close DevTools for the target tab, keep the debugger session attached, and retry with a fresh snapshot.
-- **Native input misses the target:** focus the intended browser window and verify display scaling and OS permissions.
+- **Native input is rejected:** focus the intended webpage and take a fresh snapshot. Confirm OS accessibility permissions and keep the window, zoom, and monitor arrangement stable during input. Unverifiable page surfaces are rejected.
 - **Package directory moved:** rebuild if needed and reinstall the Native Messaging host so its absolute launcher paths are current.
 
 ## Browser interaction test web app

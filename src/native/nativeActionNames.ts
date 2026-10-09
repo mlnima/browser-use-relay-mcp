@@ -26,3 +26,8 @@ export const dialogActions = new Set([
 export const compoundActions = new Set([
   "clickElement", "fillField", "chooseOption", "dragElement", "findAndClick", "findAndFill",
 ]);
+
+export const nativePageActions = new Set([
+  ...pointerMoveActions, ...pointerClickActions, ...pointerDragActions, ...scrollActions,
+  ...keyboardActions, ...textActions, ...compoundActions, "copy", "cut", "paste",
+]);

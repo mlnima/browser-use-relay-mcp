@@ -1,4 +1,4 @@
-import type { ActionRequest, ActionResult } from "./action.js";
+import type { ActionRequest, ActionResult, NativePage } from "./action.js";
 import type { JsonValue } from "./json.js";
 import type { RelayAddresses, RelaySettings, RelayStatus } from "./settings.js";
 
@@ -28,8 +28,9 @@ export type RelayMessage =
 export type NativeConfigure = { type: "configure"; generation: number; settings: RelaySettings };
 export type NativeQuiesce = { type: "quiesce"; generation: number };
 export type NativeQuiesced = { type: "quiesced"; generation: number };
-export type NativeActionResult = { type: "actionResult"; result: ActionResult };
-export type NativeActionRequest = { type: "actionRequest"; request: ActionRequest };
+export type NativeActionResult = { type: "actionResult"; result: ActionResult; inputHeld?: boolean };
+export type NativeActionRequest = { type: "actionRequest"; request: ActionRequest; page?: NativePage };
+export type NativePageInvalidated = { type: "pageInvalidated"; observation: string; reason: string };
 export type NativeState = {
   type: "state";
   generation: number;
@@ -44,6 +45,7 @@ export type NativeMessage =
   | NativeQuiesced
   | NativeActionResult
   | NativeActionRequest
+  | NativePageInvalidated
   | NativeState
   | RelayCancel
   | RelayEvent;

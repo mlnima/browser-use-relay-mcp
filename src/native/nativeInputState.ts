@@ -2,6 +2,7 @@ import type { NativeButton } from "./nativeButtons.js";
 import { keyboard } from "./nativeKeyboardAdapter.js";
 import { resolveTextKeys, type NativeKey } from "./nativeKeys.js";
 import { mouse } from "./nativeMouseAdapter.js";
+import { assertNativePageKeys } from "./page/nativePageScope.js";
 
 const heldKeys = new Set<NativeKey>();
 const heldButtons = new Set<NativeButton>();
@@ -31,6 +32,7 @@ export const pressNativeKeys = async (keys: readonly NativeKey[]) => {
 export const acquireNativeKeys = async (keys: readonly NativeKey[]) => {
   const owned = [...new Set(keys)].filter((key) => !heldKeys.has(key));
   if (!owned.length) return owned;
+  assertNativePageKeys(owned.map((key) => key.code));
   try { await pressNativeKeys(owned); }
   catch (error) {
     owned.forEach((key) => {

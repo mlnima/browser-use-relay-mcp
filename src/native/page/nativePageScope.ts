@@ -51,7 +51,10 @@ const arm = () => {
         if (!inside(point, context.surface.rect)) throw createNativeError("NATIVE_PAGE_BOUNDS", "The held pointer left the webpage.");
         context.surface.verify(point);
       }
-    } catch (error) { void revoke(context, error instanceof Error ? error : new Error("The webpage lost focus.")); }
+    } catch (error) {
+      void revoke(context, error instanceof Error ? error : new Error("The webpage lost focus.")).catch((failure: unknown) =>
+        context.failed(failure instanceof Error ? failure : new Error("Native input could not be released.")));
+    }
   }, 16);
 };
 const scope = () => {

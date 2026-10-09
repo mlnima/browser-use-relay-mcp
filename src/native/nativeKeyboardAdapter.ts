@@ -9,7 +9,7 @@ const tapKeys = (keys: readonly NativeKey[]) => {
   const key = reversed[0];
   if (!key) return;
   const modifiers = keyCodes(reversed.slice(1));
-  nativeBinding().keyTap(key.code, modifiers.length ? modifiers : undefined);
+  nativeBinding().keyTap(key.code, modifiers);
 };
 const toggleKeys = (keys: readonly NativeKey[], direction: "down" | "up") => {
   if (direction === "down") assertNativePageKeys(keyCodes(keys));
@@ -17,7 +17,7 @@ const toggleKeys = (keys: readonly NativeKey[], direction: "down" | "up") => {
   const key = reversed[0];
   if (!key) return;
   const modifiers = keyCodes(reversed.slice(1));
-  nativeBinding().keyToggle(key.code, direction, modifiers.length ? modifiers : undefined);
+  nativeBinding().keyToggle(key.code, direction, modifiers);
   direction === "down" ? nativePageKeysPressed(keyCodes(keys)) : nativePageKeysReleased(keyCodes(keys));
 };
 

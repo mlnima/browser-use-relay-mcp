@@ -51,7 +51,7 @@ const executeEngine = async (engine: Exclude<ActionEngine, "auto">, request: Act
   if (!nativeExecute) throw new Error("The browser-device native engine is unavailable.");
   const result = await nativeExecute({ ...request, engine: "native" }, signal);
   if (!result.success) throw new Error(result.error?.message || "Native action failed.");
-  return { data: result.data ?? null, revision: result.revision };
+  return { data: result.data ?? null, ...(result.revision === undefined ? {} : { revision: result.revision }) };
 };
 
 export const executeActionRequest = async (request: ActionRequest, signal: AbortSignal, nativeExecute?: NativeExecute): Promise<ActionResult> => {

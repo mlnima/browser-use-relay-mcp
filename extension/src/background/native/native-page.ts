@@ -74,7 +74,9 @@ export const prepareNativePage = async (request: ActionRequest, signal: AbortSig
   }
   const latest = await readPage(tabId);
   if (!latest.page.focused || latest.fingerprint !== state.fingerprint) throw new Error("The webpage changed while resolving the native target. Take a fresh snapshot.");
-  return { request: { ...request, target: point, params }, page: state.page };
+  const nextRequest = { ...request, params };
+  delete nextRequest.target;
+  return { request: { ...nextRequest, ...(point ? { target: point } : {}) }, page: state.page };
 };
 
 export const watchNativePage = (page: NativePage, changed: () => void) => {

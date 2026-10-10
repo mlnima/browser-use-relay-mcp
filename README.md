@@ -160,6 +160,8 @@ A native click inside the verified webpage can establish keyboard focus when the
 
 Pointer movement allows up to 50 ms for the OS cursor position to update before confirming each step. This handles delayed Windows cursor reports without relaxing the position tolerance or webpage boundary checks; clicks wait for confirmed movement.
 
+Native `shortcut` accepts a chord through `params.key` or `params.shortcut`, such as `"Ctrl+Z"`, or through `params.keys`, such as `["Control", "Z"]`. Each shortcut presses and releases its keys in one action, avoiding separate action delays between chord keys.
+
 Take a fresh `browser_snapshot` or `getPageState` before native input, and again after navigation, zoom, movement, resizing, or focus changes. The extension supplies private page measurements; the agent cannot supply its own desktop bounds. The host verifies page focus, geometry, and pointer hit targets before input, checks each drag step and typed character, and releases held input if the page changes. Windows confines held pointer input to the webpage. A native failure stops `browser_batch` even with `stopOnError: false`. If page geometry or focus cannot be verified, the action fails without sending desktop input.
 
 Native input cannot operate the address bar, tab strip, window controls, OS dialogs, or other apps. Tab traversal and shortcuts that can reach browser or OS UI are rejected, including Alt/Win shortcuts, function keys, Ctrl+L, Ctrl+Shift+Delete, and Ctrl+wheel zoom. Use programmatic actions such as `newTab`, `activateTab`, and browser zoom instead. Native dialog tools are omitted; programmatic file transfers remain available.

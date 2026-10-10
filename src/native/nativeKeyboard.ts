@@ -12,7 +12,7 @@ import { requiredStringParam, stringArrayParam, stringParam, textParam } from ".
 const requestKeys = (request: ActionRequest) => {
   const names = stringArrayParam(request, "keys") || (
     stringParam(request, "shortcut") ? splitShortcut(requiredStringParam(request, "shortcut")) :
-    [requiredStringParam(request, "key")]
+    request.action === "shortcut" ? splitShortcut(requiredStringParam(request, "key")) : [requiredStringParam(request, "key")]
   );
   if (!names.length) throw createNativeError("INVALID_NATIVE_PARAMETERS", "At least one native key is required.");
   const namedKeys = resolveKeys(names);

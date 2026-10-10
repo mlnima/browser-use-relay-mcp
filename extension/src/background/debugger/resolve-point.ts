@@ -21,7 +21,9 @@ const coordinateBounds = async (request: ActionRequest, tabId: number, signal?: 
     if (x < 0 || y < 0 || x >= viewport.width || y >= viewport.height) throw new Error("Target coordinates are outside the selected frame viewport.");
     return translateFrameBounds(request, tabId, bounds, signal, viewport, request.engine === "native");
   }
-  const { layoutViewport } = await sendDebuggerCommand<LayoutMetrics>(tabId, "Page.getLayoutMetrics");
+  const { layoutViewport } = request.engine === "native"
+    ? { layoutViewport: await readFrameViewport(request, signal).then(({ width, height }) => ({ clientWidth: width, clientHeight: height })) }
+    : await sendDebuggerCommand<LayoutMetrics>(tabId, "Page.getLayoutMetrics");
   if (x < 0 || y < 0 || x >= layoutViewport.clientWidth || y >= layoutViewport.clientHeight) throw new Error("Target coordinates are outside the top-frame viewport.");
   return bounds;
 };

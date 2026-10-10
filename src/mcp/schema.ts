@@ -60,7 +60,7 @@ export const createActionSchema = (inputEngine: InputEngine) => {
       ...actionFields,
       action: z.enum(inputs),
       engine: z.literal(inputEngine).optional().describe(`Input actions use only ${inputEngine}.`),
-      target: targetSchema.describe("Input coordinates are CSS viewport coordinates in the selected webpage/frame. Native input cannot target browser or OS UI."),
+      target: targetSchema.describe(`Input coordinates are CSS viewport coordinates in the selected webpage/frame. Native input cannot target browser or OS UI.${inputEngine === "native" ? " Switch to the target tab/window and take a fresh browser_snapshot or getPageState before native input and after focus or geometry changes." : ""}`),
     }),
     z.strictObject({ ...actionFields, action: z.enum(other) }),
   ]);

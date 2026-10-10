@@ -156,7 +156,7 @@ Browser mode exposes browser-generated input; Native mode exposes OS mouse and k
 
 Native input is restricted to the focused **webpage content area**. Coordinates are CSS viewport coordinates, including coordinates returned by page snapshots; selected-frame coordinates and element targets are resolved to the top-page viewport without scripted scrolling. The host converts them using the actual OS webpage surface, window position, and viewport scale. Windows uses per-monitor physical coordinates, including mixed DPI and negative monitor positions. Browser zoom is included through the measured viewport-to-surface ratio.
 
-A native click inside the verified webpage can establish keyboard focus when the browser address bar has focus. Typing and key presses still require OS-verified webpage keyboard focus. Mouse targeting and scrolling do not require an already-focused page element; covered targets and out-of-page coordinates remain blocked.
+A native click inside the verified webpage can establish keyboard focus when the browser address bar has focus. Typing and key presses still require OS-verified webpage keyboard focus. Mouse targeting and scrolling do not require an already-focused page element; covered targets and out-of-page coordinates remain blocked. Native top-frame coordinate reads do not attach the browser debugger, avoiding a viewport change on the first drag.
 
 Take a fresh `browser_snapshot` or `getPageState` before native input, and again after navigation, zoom, movement, resizing, or focus changes. The extension supplies private page measurements; the agent cannot supply its own desktop bounds. The host verifies page focus, geometry, and pointer hit targets before input, checks each drag step and typed character, and releases held input if the page changes. Windows confines held pointer input to the webpage. A native failure stops `browser_batch` even with `stopOnError: false`. If page geometry or focus cannot be verified, the action fails without sending desktop input.
 
@@ -164,7 +164,7 @@ Native input cannot operate the address bar, tab strip, window controls, OS dial
 
 Popup changes update connected clients' tool schemas through MCP tool-list notifications; clients must refresh their tool discovery when notified. Changing MCP JSON requires restarting that MCP connection.
 
-For an existing installation, pull the updated repository and run `npm run build --workspaces=false` from the package directory on both devices. Reload the extension on the browser device (`edge://extensions` for Microsoft Edge) and restart the agent's MCP connection so both processes use the new build. Native host registration stays valid when the package path and extension ID are unchanged.
+For an existing installation, pull the updated repository and run `npm run build --workspaces=false` from the package directory on both devices. Use the extension card's **Reload** button on the browser device (`edge://extensions` for Microsoft Edge), which also restarts its native host, and restart the agent's MCP connection so both processes use the new build. A browser restart alone may leave the previous service-worker build cached. Native host registration stays valid when the package path and extension ID are unchanged.
 
 The server supports current MCP discovery and compatible 2025-era initialization through the official TypeScript SDK.
 

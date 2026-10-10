@@ -37,7 +37,7 @@ export const moveNativeScreenPoint = async (
     mouse.config.mouseSpeed = Math.max(1, Math.hypot(target.x - current.x, target.y - current.y) * 1000 / durationMs);
   }
   durationMs === 0
-    ? await mouse.setPosition(target)
+    ? await mouse.setPosition(target, signal)
     : await mouse.move(target, signal);
   throwIfAborted(signal);
   return { x: target.x, y: target.y };

@@ -5,16 +5,22 @@ import { assertNativePagePoint, nativePointerInsidePage, nativePageButtonPressed
 
 export type NativePoint = { x: number; y: number };
 const config = { autoDelayMs: 0, mouseSpeed: 1000 };
-const setPosition = async (point: NativePoint) => {
+const setPosition = async (point: NativePoint, signal: AbortSignal) => {
   assertNativePagePoint(point);
   nativeBinding().moveMouse(point.x, point.y);
-  const actual = nativeBinding().getMousePos();
-  assertNativePagePoint(actual);
-  if (Math.hypot(actual.x - point.x, actual.y - point.y) > 1.5) throw new Error("Native pointer movement did not reach the webpage target.");
+  const deadline = performance.now() + 50;
+  for (;;) {
+    throwIfAborted(signal);
+    const actual = nativeBinding().getMousePos();
+    assertNativePagePoint(actual);
+    if (Math.hypot(actual.x - point.x, actual.y - point.y) <= 1.5) return;
+    if (performance.now() >= deadline) throw new Error("Native pointer movement did not reach the webpage target.");
+    await abortableDelay(4, signal);
+  }
 };
 const move = async (target: NativePoint, signal: AbortSignal) => {
   const origin = nativeBinding().getMousePos();
-  if (!nativePointerInsidePage(origin)) return setPosition(target);
+  if (!nativePointerInsidePage(origin)) return setPosition(target, signal);
   const distance = Math.hypot(target.x - origin.x, target.y - origin.y);
   const durationMs = config.mouseSpeed > 0 ? distance * 1000 / config.mouseSpeed : 0;
   const steps = Math.max(1, Math.min(2048, Math.ceil(distance), Math.ceil(durationMs / 8)));
@@ -26,7 +32,7 @@ const move = async (target: NativePoint, signal: AbortSignal) => {
     await setPosition({
       x: Math.round(origin.x + (target.x - origin.x) * index / steps),
       y: Math.round(origin.y + (target.y - origin.y) * index / steps),
-    });
+    }, signal);
   }
 };
 const prepare = () => { assertNativePagePoint(nativeBinding().getMousePos()); assertNativePageKeys([], false, false); nativeBinding().setMouseDelay(0); };

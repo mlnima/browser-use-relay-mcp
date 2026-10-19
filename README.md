@@ -246,6 +246,25 @@ Extract visible matching elements:
 }
 ```
 
+For smaller element-query results, set `params.fields` to the descriptor fields needed for the next action and `params.attributes` to specific DOM attribute names:
+
+```json
+{
+  "action": "querySelectorAll",
+  "target": { "locator": { "selector": "a[href]" } },
+  "params": {
+    "fields": ["text"],
+    "attributes": ["href", "aria-label"],
+    "limit": 10,
+    "offset": 0
+  }
+}
+```
+
+Each element retains its action-targetable `id` and returns the selected descriptor fields plus an `attributes` object. Attribute values use `getAttribute`, so relative URLs remain relative and missing attributes are `null`. Omitting `fields` keeps the full descriptor; `fields: []` keeps only the ID and any requested attributes. Fields can be `id`, `tag`, `inputType`, `contentEditable`, `formAssociated`, `role`, `text`, `value`, `visible`, `enabled`, `editable`, `readonly`, `checked`, `selected`, `selectedValues`, `bounds`, or `outputLimits`. Invalid field names and malformed selection arrays fail explicitly. Existing string and byte limits still apply, and truncation metadata is retained when requested values are shortened.
+
+Field and attribute selection also apply to `querySelector`, `queryXPath`, `queryText`, `queryRole`, `queryLabel`, `queryPlaceholder`, `queryCoordinates`, and `findInFrame`. Query pagination retains `offset`, `limit`, `nextOffset`, and truncation metadata. Continue from `nextOffset` when more results are needed. Request full descriptors, bounds, or snapshots when required by the next action.
+
 Click a revisioned element with browser input:
 
 ```json

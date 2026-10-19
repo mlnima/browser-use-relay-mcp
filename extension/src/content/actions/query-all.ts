@@ -2,6 +2,7 @@ import { MAX_CONTENT_QUERY_OFFSET, MAX_CONTENT_QUERY_RESULTS, MAX_CONTENT_VALUE_
 import type { JsonValue } from "../../../../src/types/json.js";
 import { describeElement } from "./element-data";
 import { toJsonValueWithBytes } from "./element.js";
+import { readElementProjection } from "./element-projection";
 
 export const queryInteger = (value: unknown, fallback: number, minimum: number, maximum: number, label: string) => {
   const resolved = value === undefined ? fallback : value;
@@ -23,9 +24,10 @@ export const visitElements = (selector: string, visit: (element: Element) => boo
   return true;
 };
 
-export const queryAll = (selector: string, rawLimit?: unknown, rawOffset?: unknown): JsonValue => {
+export const queryAll = (selector: string, rawLimit?: unknown, rawOffset?: unknown, fields?: unknown, attributes?: unknown): JsonValue => {
   const limit = queryInteger(rawLimit, MAX_CONTENT_QUERY_RESULTS, 1, MAX_CONTENT_QUERY_RESULTS, "limit");
   const offset = queryInteger(rawOffset, 0, 0, MAX_CONTENT_QUERY_OFFSET, "offset");
+  const projection = readElementProjection(fields, attributes);
   const elements: JsonValue[] = [];
   let matched = 0;
   let encodedBytes = 2;
@@ -37,7 +39,7 @@ export const queryAll = (selector: string, rawLimit?: unknown, rawOffset?: unkno
       truncationReason = "limit";
       return false;
     }
-    const output = toJsonValueWithBytes(describeElement(element), MAX_CONTENT_VALUE_BYTES, "Element descriptor");
+    const output = toJsonValueWithBytes(describeElement(element, projection), MAX_CONTENT_VALUE_BYTES, "Element descriptor");
     const requiredBytes = output.encodedBytes + Number(elements.length > 0);
     if (encodedBytes + requiredBytes > MAX_CONTENT_VALUE_BYTES) {
       truncationReason = "byteLimit";

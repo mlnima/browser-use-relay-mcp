@@ -3,6 +3,8 @@ import type { ActionDelaySettings, InputEngineSettings } from "./settings.js";
 
 export type ActionEngine = "auto" | "browser" | "dom" | "native";
 
+export type ElementProjection = { fields?: string[]; attributes?: string[] };
+
 export type ActionLocator = {
   selector?: string;
   xpath?: string;

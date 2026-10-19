@@ -10,7 +10,7 @@ export const registerQueryTool = (server: McpServer, client: RelayClient) => ser
   "browser_query",
   {
     title: "Query browser",
-    description: "Run a catalog-defined read query. Some browser observations may activate a tab or attach debugger instrumentation.",
+    description: "Run a catalog-defined read query. Element queries support params.fields and params.attributes; request only needed data and bound list results with limit/offset. Discover exact options through browser_capabilities. Some browser observations may activate a tab or attach debugger instrumentation.",
     inputSchema: actionInputSchema,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   },

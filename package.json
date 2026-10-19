@@ -12,6 +12,7 @@
     "scripts"
   ],
   "scripts": {
+    "test:browser-results": "node --import tsx --test tests/browserResults.test.mjs",
     "build": "npm run build:server && npm run build:extension",
     "build:server": "node scripts/clean-server.mjs && tsc -p tsconfig.json",
     "build:extension": "npm run build:extension:copy && npm run build:extension:code && npm run build:extension:styles",

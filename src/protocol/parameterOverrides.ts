@@ -1,7 +1,7 @@
 export const actionParameterOverrides = {
   snapshot: "params: includeScreenshot, includeHidden, allFrames, maxElements. The top frame is the default; request allFrames only when needed. Snapshots contain sparse semantic descriptors, omit default states and bounds, and enforce complete MCP-result limits with truthful truncation metadata. Screenshots are returned as MCP image content instead of JSON text.",
   waitNavigation: "params.event may be committed, domContentLoaded, completed, error, historyStateUpdated, or referenceFragmentUpdated; URL filters also apply to SPA/hash events.",
-  querySelectorAll: "target.locator.selector or params.selector; offset 0..100000 and limit 1..5000. Returns a page with truncation, nextOffset, encodedBytes, and a 6MiB byte limit.",
+  querySelectorAll: "target.locator.selector or params.selector; offset 0..100000 and limit 1..5000. Returns a page with truncation, nextOffset, encodedBytes, and a 6MiB byte limit. Optional params.fields and params.attributes follow the inspect guide.",
   traverse: "params.relationship parent|ancestor|child|descendant|nextSibling|previousSibling|sibling, locator, index.",
   getText: "Returns rendered text only when its bounded source and encoded scalar fit the 6MiB limit; oversized reads fail explicitly.",
   getHTML: "Returns outerHTML only when its bounded subtree and encoded scalar fit the 6MiB limit; oversized reads fail explicitly.",

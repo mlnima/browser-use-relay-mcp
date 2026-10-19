@@ -1,4 +1,5 @@
 import type { JsonValue } from "../../../../src/types/json.js";
+import type { ElementProjection } from "../../../../src/types/action.js";
 import { MAX_SNAPSHOT_SELECTED_VALUES, MAX_SNAPSHOT_STRING_CHARACTERS } from "../../../../src/protocol/limits.js";
 import { createSnapshotStringLimiter } from "../../shared/snapshot-limit.js";
 import { getAccessibleName } from "../catalog/accessible-name.js";
@@ -7,7 +8,7 @@ import { registerElement } from "../catalog/registry";
 import { isElementEditable, isElementEnabled, isElementReadonly, isElementVisible } from "../catalog/element-state";
 import { collectBoundedElementText } from "../catalog/text.js";
 
-export const describeElement = (element?: Element): JsonValue => {
+export const describeElement = (element?: Element, projection?: ElementProjection): JsonValue => {
   if (!element) return null;
   const bounds = element.getBoundingClientRect();
   const control = element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement ? element : undefined;
@@ -27,7 +28,7 @@ export const describeElement = (element?: Element): JsonValue => {
     : null;
   const scanOnlyTruncation = textResult.truncated && (text?.length || 0) <= MAX_SNAPSHOT_STRING_CHARACTERS;
   if (scanOnlyTruncation) limiter.stats.truncatedStrings += 1 + Number(element instanceof HTMLElement && element.isContentEditable);
-  return {
+  const description = {
     id,
     tag: limiter.limit(element.tagName.toLowerCase())!,
     inputType: typedControl ? limiter.limit(typedControl.type)! : null,
@@ -50,5 +51,17 @@ export const describeElement = (element?: Element): JsonValue => {
       stringTruncationCount: limiter.stats.truncatedStrings,
       omittedSelectedValueCount: Math.max(0, selectedCount - MAX_SNAPSHOT_SELECTED_VALUES),
     },
+  };
+  const attributes = projection?.attributes && Object.fromEntries(projection.attributes.map((name) => {
+    const value = element.getAttribute(name);
+    return [name, value === null ? null : limiter.limit(value)!];
+  }));
+  description.outputLimits.stringTruncationCount = limiter.stats.truncatedStrings;
+  const fields = projection?.fields && new Set(["id", ...projection.fields]);
+  return {
+    ...(fields ? Object.fromEntries(Object.entries(description).filter(([name]) => fields.has(name))) : description),
+    ...(attributes ? { attributes } : {}),
+    ...(limiter.stats.truncatedStrings || description.outputLimits.omittedSelectedValueCount
+      ? { outputLimits: description.outputLimits } : {}),
   };
 };

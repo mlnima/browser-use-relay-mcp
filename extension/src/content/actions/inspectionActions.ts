@@ -1,4 +1,4 @@
-import type { ContentActionHandler } from "./types.js";
+import type { ContentActionContext, ContentActionHandler } from "./types.js";
 import { DEFAULT_SNAPSHOT_ELEMENTS, MAX_CONTENT_JSON_ITEMS, MAX_CONTENT_VALUE_BYTES, MAX_SNAPSHOT_CATALOG_BYTES } from "../../../../src/protocol/limits.js";
 import { describeElement } from "./element-data";
 import { requireElement, toJsonValue } from "./element";
@@ -13,6 +13,10 @@ import { waitForRevision } from "../observation/wait-revision";
 import { queryAll } from "./query-all";
 import { matchesVisibleText, renderedText, resolveVisibleText } from "./visible-text-query";
 import { getActionableBounds, getElementPath } from "./actionable-element";
+import { readElementProjection } from "./element-projection";
+
+const describeTarget = ({ request, resolveTarget }: ContentActionContext) =>
+  describeElement(resolveTarget(), readElementProjection(request.params?.fields, request.params?.attributes));
 
 const styleValues = (element: Element, properties: string[]) => {
   const style = getComputedStyle(element);
@@ -37,22 +41,22 @@ export const inspectionActionHandlers: Record<string, ContentActionHandler> = {
       maxScannedElements: request.params?.maxScannedElements === undefined ? undefined : Number(request.params.maxScannedElements),
     });
   },
-  querySelector: async ({ resolveTarget }) => describeElement(resolveTarget()),
-  querySelectorAll: async ({ request }) => queryAll(String(request.target?.locator?.selector || request.params?.selector || "*"), request.params?.limit, request.params?.offset),
-  queryXPath: async ({ resolveTarget }) => describeElement(resolveTarget()),
+  querySelector: async (context) => describeTarget(context),
+  querySelectorAll: async ({ request }) => queryAll(String(request.target?.locator?.selector || request.params?.selector || "*"), request.params?.limit, request.params?.offset, request.params?.fields, request.params?.attributes),
+  queryXPath: async (context) => describeTarget(context),
   queryText: async ({ request, resolveTarget }) => {
     const locator = request.target?.locator;
     let element = resolveTarget();
     if (!request.target?.elementId && locator?.text !== undefined) element = resolveVisibleText(locator);
     let visible = Boolean(element && isElementVisible(element));
     if (element && locator?.text !== undefined) visible = matchesVisibleText(element, locator);
-    return describeElement(visible ? element : undefined);
+    return describeElement(visible ? element : undefined, readElementProjection(request.params?.fields, request.params?.attributes));
   },
-  queryRole: async ({ resolveTarget }) => describeElement(resolveTarget()),
-  queryLabel: async ({ resolveTarget }) => describeElement(resolveTarget()),
-  queryPlaceholder: async ({ resolveTarget }) => describeElement(resolveTarget()),
-  queryCoordinates: async ({ resolveTarget }) => describeElement(resolveTarget()),
-  findInFrame: async ({ resolveTarget }) => describeElement(resolveTarget()),
+  queryRole: async (context) => describeTarget(context),
+  queryLabel: async (context) => describeTarget(context),
+  queryPlaceholder: async (context) => describeTarget(context),
+  queryCoordinates: async (context) => describeTarget(context),
+  findInFrame: async (context) => describeTarget(context),
   getBoundingBox: async ({ target, request, resolveTarget, signal }) => {
     if (request.params?.actionable === true) return getActionableBounds(target, resolveTarget, signal);
     const element = requireElement(target);

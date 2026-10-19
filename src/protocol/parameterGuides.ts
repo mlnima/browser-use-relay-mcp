@@ -1,3 +1,5 @@
+import { elementProjectionGuide } from "./elementProjection.js";
+
 export const targetGuide = {
   precedence: "elementId, locator, coordinates",
   tabId: "Chrome tab ID; omitted uses the active tab.",
@@ -20,7 +22,7 @@ export const categoryParameterGuides = {
   form: "target exact enabled form control; focusField/blurField accept enabled non-hidden input, textarea, select, or button controls and verify activeElement state. Browser/DOM check and radio actions validate input type and return observed checked state, increment/decrement require writable number inputs with steps 1..1000 and return observed value, and submit/reset require form-associated controls. DOM set* actions require their matching writable input type, prevalidate type/range constraints, and return the retained canonical value. Every option token must resolve to exactly one enabled option before mutation; deselection or multiple values require a multi-select.",
   files: "set/clear target an enabled input[type=file], enforce the multiple cardinality, and verify the observed FileList count; browser-device paths use files[] and DOM byte payloads use {name,mimeType,base64}[]; drop targets and completion waits use their explicit fields.",
   drag: "target is source; params.destination is an ActionTarget; data is MIME-to-string; effectAllowed and dropEffect are optional.",
-  inspect: "target or locator selects elements; query-all accepts limit; property/style reads use name or properties[].",
+  inspect: `target or locator selects elements; query-all accepts limit; property/style reads use name or properties[]. For querySelector, querySelectorAll, queryXPath, queryText, queryRole, queryLabel, queryPlaceholder, queryCoordinates, and findInFrame: ${elementProjectionGuide}`,
   dom: "target selects an element; createElement returns a detached elementId; append/move/clone use source/destination ActionTarget and position; all id/class/className/classList writes and structural removal of identifier-bearing trees are rejected.",
   script: "params.expression is a side-effect-free expression; world MAIN|ISOLATED; CSS actions require exact css and optional origin USER|AUTHOR/allFrames.",
   events: "target element; params.type is required; standard EventInit fields and serializable custom detail are supported.",

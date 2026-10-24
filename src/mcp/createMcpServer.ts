@@ -15,7 +15,10 @@ const instructions = `Control exactly one configured Chromium browser through it
 
 export const createMcpServer = async (client: RelayClient) => {
   if (client.inputEngine() === "auto") await client.connect().catch(() => undefined);
-  const server = new McpServer({ name: PACKAGE_NAME, version: "1.0.0" }, { instructions });
+  const server = new McpServer({ name: PACKAGE_NAME, version: "1.0.0" }, { instructions, capabilities: { experimental: {
+    "io.eskai/executionResources": { sharingKnown: false, exclusiveHost: true,
+      resources: [{ id: "browser-controller", exclusive: true }], supportedIsolation: "none" },
+  } } });
   registerCapabilitiesTool(server, client);
   registerSnapshotTool(server, client);
   registerQueryTool(server, client);
